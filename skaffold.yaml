@@ -1,0 +1,134 @@
+####################################
+# This file can be used with Skaffold (https://github.com/GoogleContainerTools/skaffold) to
+# build and deploy Fission to Kubernetes cluster.
+# Skaffold version v1.31.0 is used for this configuration.
+############## Usage ##############
+# Skaffold CLI should be installed on your machine.
+# For building & deploying to Cloud Provider
+# $ skaffold config set default-repo vishalbiyani (vishalbiyani - should be your registry/Dockerhub handle)
+# $ `skaffold run`
+# For building & deploying to Kind cluster use Kind profile
+# $ `skaffold run -p kind`
+####################################
+apiVersion: skaffold/v2beta22
+kind: Config
+build:
+  artifacts:
+  - image: fission-bundle
+    context: dist/fission-bundle_linux_amd64_v1
+  - image: fetcher
+    context: dist/fetcher_linux_amd64_v1
+  - image: pre-upgrade-checks
+    context: dist/pre-upgrade-checks_linux_amd64_v1
+  - image: reporter
+    context: dist/reporter_linux_amd64_v1
+deploy:
+  helm:
+    releases:
+    - name: fission
+      chartPath: ./charts/fission-all
+      valuesFiles:
+      - ./charts/fission-all/values.yaml
+      artifactOverrides:
+        fetcher.image: fetcher
+        image: fission-bundle
+        postInstallReportImage: reporter
+        preUpgradeChecks.image: pre-upgrade-checks
+      namespace: fission
+      setValues:
+        analytics: false
+        debugEnv: false
+        fetcher.imageTag: ""
+        imageTag: ""
+        preUpgradeChecks.imageTag: ""
+        namespace: fission
+        pprof.enabled: false
+        canaryDeployment.enabled: false
+        influxdb.enabled: false
+        storagesvc.archivePruner.enabled: true
+        storagesvc.archivePruner.interval: "60"
+        runtimePodSpec.enabled: false
+        builderPodSpec.enabled: false
+        repository: index.docker.io
+        routerServiceType: LoadBalancer
+        openTelemetry.otlpCollectorEndpoint: ""
+        openTelemetry.otlpInsecure: true
+        prometheus.serviceEndpoint: ""
+        priorityClassName: system-cluster-critical
+        # Use /var/log directory for kind logs export
+        terminationMessagePath: /var/log/termination-log
+        terminationMessagePolicy: FallbackToLogsOnError
+        executor.securityContext.enabled: true
+        router.securityContext.enabled: true
+        buildermgr.securityContext.enabled: true
+        controller.securityContext.enabled: true
+        kubewatcher.securityContext.enabled: true
+        storagesvc.securityContext.enabled: true
+      wait: true
+    flags:
+      install:
+      - --timeout=3m
+      - --debug
+      - --dependency-update
+      upgrade:
+      - --timeout=3m
+      - --install
+      - --force
+      - --debug
+profiles:
+- name: kind
+  patches:
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/repository
+    value: ""
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/routerServiceType
+    value: NodePort
+- name: kind-debug
+  patches:
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/repository
+    value: ""
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/routerServiceType
+    value: NodePort
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/debugEnv
+    value: true
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/pprof.enabled
+    value: true
+- name: kind-ci
+  patches:
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/repository
+    value: ""
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/storagesvc.archivePruner.interval
+    value: 1
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/routerServiceType
+    value: NodePort
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/influxdb.enabled
+    value: true
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/canaryDeployment.enabled
+    value: true
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/prometheus.serviceEndpoint
+    value: "http://monitoring-prometheus-server.monitoring.svc.cluster.local"
+- name: kind-opentelemetry
+  patches:
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/repository
+    value: ""
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/routerServiceType
+    value: NodePort
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/pprof.enabled
+    value: true
+  - op: replace
+    path: /deploy/helm/releases/0/setValues/openTelemetry.otlpCollectorEndpoint
+    value: "otel-collector.opentelemetry-operator-system.svc:4317"

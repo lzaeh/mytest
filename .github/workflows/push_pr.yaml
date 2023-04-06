@@ -1,0 +1,142 @@
+name: Fission CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "**.go"
+      - "charts/**"
+      - "test/**"
+      - go.mod
+      - go.sum
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "**.go"
+      - "charts/**"
+      - "test/**"
+      - go.mod
+      - go.sum
+  workflow_dispatch:
+
+env:
+  HELM_VERSION: v3.9.0
+  KIND_VERSION: v0.14.0
+
+jobs:
+  # Job to run change detection
+  integration-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        kindversion: ["v1.19.16", "v1.20.15", "v1.21.12"]
+        os: [ubuntu-latest]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: setup go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Checkout sources
+        uses: actions/checkout@v3
+        with:
+          repository: fission/examples
+          path: examples
+
+      - name: Helm installation
+        uses: Azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Kind Clutser
+        uses: engineerd/setup-kind@v0.5.0
+        with:
+          image: kindest/node:${{ matrix.kindversion }}
+          version: ${{ env.KIND_VERSION }}
+          config: kind.yaml
+
+      - name: Configuring and testing the Installation
+        run: |
+          kubectl cluster-info --context kind-kind
+          kubectl get nodes
+          sudo apt-get install -y apache2-utils
+
+      - name: Helm chart lint
+        run: |
+          helm lint charts/fission-all/
+
+      - name: Install Skaffold
+        run: |
+          curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-amd64
+          sudo install skaffold /usr/local/bin/
+          skaffold version
+
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          install-only: true
+
+      - name: Setup Prometheus Stack
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          kubectl create ns monitoring
+          helm install monitoring prometheus-community/prometheus -n monitoring
+
+      - name: Build and Install Fission CLI
+        run: |
+          make debug-vars
+          make build-fission-cli
+          sudo make install-fission-cli
+          sudo chmod +x /usr/local/bin/fission
+
+      - name: Build and Install Fission
+        run: |
+          kubectl create ns fission
+          make create-crds
+          SKAFFOLD_PROFILE=kind-ci make skaffold-deploy
+
+      - name: Port-forward fission components
+        run: |
+          kubectl port-forward svc/router 8888:80 -nfission &
+          kubectl port-forward svc/controller 8889:80 -nfission &
+
+      - name: Get fission version
+        run: |
+          fission version
+
+      - name: Integration tests
+        run: ./test/kind_CI.sh
+
+      - name: Collect Fission Dump
+        if: ${{ always() }}
+        run: |
+          command -v fission && fission support dump
+
+      - name: Kind export logs
+        if: ${{ always() }}
+        run: |
+          kind export logs --name kind kind-logs
+
+      - name: Archive fission dump
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: fission-dump-${{ github.run_id }}-${{ matrix.kindversion }}
+          path: fission-dump/*.zip
+          retention-days: 5
+
+      - name: Archive kind logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: kind-logs-${{ github.run_id }}-${{ matrix.kindversion }}
+          path: kind-logs/*
+          retention-days: 5

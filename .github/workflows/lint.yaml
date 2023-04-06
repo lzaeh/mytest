@@ -1,0 +1,68 @@
+name: Lint and Unit tests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "**.go"
+      - go.mod
+      - go.sum
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "**.go"
+      - go.mod
+      - go.sum
+  workflow_dispatch:
+
+env:
+  GOLANGCI_LINT_VERSION: v1.49.0
+  GOLANGCI_LINT_TIMEOUT: 5m
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Verify dependencies
+        run: |
+          go mod verify
+          go mod download
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          args: --timeout=${{ env.GOLANGCI_LINT_TIMEOUT }}
+
+      - name: Detect git changes
+        if: always()
+        run: |
+          if [[ $(git diff --stat) != '' ]]; then
+            echo -e '❌ \033[0;31m. Fix lint changes.\033[0m'
+            git diff --color
+            exit 1
+          else
+            echo '✔ No issues detected. Have a nice day :-)'
+          fi
+
+      - name: Run unit tests
+        run: ./hack/runtests.sh
+
+      - name: Upload Coverage report to CodeCov
+        uses: codecov/codecov-action@v2
+        with:
+          token: ${{secrets.CODECOV_TOKEN}}
+          flags: unittests
+          file: ./coverage.txt
