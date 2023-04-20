@@ -175,6 +175,4 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
-replace(
-    github.com/fission/fission => ../../
-)
+replace github.com/fission/fission => ../../
