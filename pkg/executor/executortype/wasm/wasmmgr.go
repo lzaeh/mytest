@@ -389,12 +389,12 @@ func (wasm *Wasm) fnCreate(ctx context.Context, fn *fv1.Function) (*fscache.Func
 		return nil, errors.Wrapf(err, "error creating deployment %v", objName)
 	}
 
-	hpa, err := wasm.hpaops.CreateOrGetHpa(ctx, objName, &fn.Spec.InvokeStrategy.ExecutionStrategy, depl, deployLabels, deployAnnotations)
-	if err != nil {
-		wasm.logger.Error("error creating HPA", zap.Error(err), zap.String("hpa", objName))
-		go cleanupFunc(ns, objName)
-		return nil, errors.Wrapf(err, "error creating the HPA %v", objName)
-	}
+	// hpa, err := wasm.hpaops.CreateOrGetHpa(ctx, objName, &fn.Spec.InvokeStrategy.ExecutionStrategy, depl, deployLabels, deployAnnotations)
+	// if err != nil {
+	// 	wasm.logger.Error("error creating HPA", zap.Error(err), zap.String("hpa", objName))
+	// 	go cleanupFunc(ns, objName)
+	// 	return nil, errors.Wrapf(err, "error creating the HPA %v", objName)
+	// }
 
 	kubeObjRefs := []apiv1.ObjectReference{
 		{
@@ -414,14 +414,14 @@ func (wasm *Wasm) fnCreate(ctx context.Context, fn *fv1.Function) (*fscache.Func
 			ResourceVersion: svc.ObjectMeta.ResourceVersion,
 			UID:             svc.ObjectMeta.UID,
 		},
-		{
-			Kind:            "horizontalpodautoscaler",
-			Name:            hpa.ObjectMeta.Name,
-			APIVersion:      hpa.TypeMeta.APIVersion,
-			Namespace:       hpa.ObjectMeta.Namespace,
-			ResourceVersion: hpa.ObjectMeta.ResourceVersion,
-			UID:             hpa.ObjectMeta.UID,
-		},
+		// {
+		// 	Kind:            "horizontalpodautoscaler",
+		// 	Name:            hpa.ObjectMeta.Name,
+		// 	APIVersion:      hpa.TypeMeta.APIVersion,
+		// 	Namespace:       hpa.ObjectMeta.Namespace,
+		// 	ResourceVersion: hpa.ObjectMeta.ResourceVersion,
+		// 	UID:             hpa.ObjectMeta.UID,
+		// },
 	}
 
 	fsvc := &fscache.FuncSvc{
@@ -478,57 +478,57 @@ func (wasm *Wasm) updateFunction(ctx context.Context, oldFn *fv1.Function, newFn
 		return err
 	}
 
-	if !reflect.DeepEqual(oldFn.Spec.InvokeStrategy, newFn.Spec.InvokeStrategy) {
-		// to support backward compatibility, if the function was created in default ns, we fall back to creating the
-		// deployment of the function in fission-function ns, so cleaning up resources there
-		ns := wasm.namespace
-		if newFn.ObjectMeta.Namespace != metav1.NamespaceDefault {
-			ns = newFn.ObjectMeta.Namespace
-		}
+	// if !reflect.DeepEqual(oldFn.Spec.InvokeStrategy, newFn.Spec.InvokeStrategy) {
+	// 	// to support backward compatibility, if the function was created in default ns, we fall back to creating the
+	// 	// deployment of the function in fission-function ns, so cleaning up resources there
+	// 	ns := wasm.namespace
+	// 	if newFn.ObjectMeta.Namespace != metav1.NamespaceDefault {
+	// 		ns = newFn.ObjectMeta.Namespace
+	// 	}
 
-		fsvc, err := wasm.fsCache.GetByFunctionUID(newFn.ObjectMeta.UID)
-		if err != nil {
-			err = errors.Wrapf(err, "error updating function due to unable to find function service cache: %v", oldFn)
-			return err
-		}
+	// 	fsvc, err := wasm.fsCache.GetByFunctionUID(newFn.ObjectMeta.UID)
+	// 	if err != nil {
+	// 		err = errors.Wrapf(err, "error updating function due to unable to find function service cache: %v", oldFn)
+	// 		return err
+	// 	}
 
-		hpa, err := wasm.hpaops.GetHpa(ctx, ns, fsvc.Name)
-		if err != nil {
-			wasm.updateStatus(oldFn, err, "error getting HPA while updating function")
-			return err
-		}
+	// 	hpa, err := wasm.hpaops.GetHpa(ctx, ns, fsvc.Name)
+	// 	if err != nil {
+	// 		wasm.updateStatus(oldFn, err, "error getting HPA while updating function")
+	// 		return err
+	// 	}
 
-		hpaChanged := false
+	// 	hpaChanged := false
 
-		if newFn.Spec.InvokeStrategy.ExecutionStrategy.MinScale != oldFn.Spec.InvokeStrategy.ExecutionStrategy.MinScale {
-			replicas := int32(newFn.Spec.InvokeStrategy.ExecutionStrategy.MinScale)
-			hpa.Spec.MinReplicas = &replicas
-			hpaChanged = true
-		}
+	// 	if newFn.Spec.InvokeStrategy.ExecutionStrategy.MinScale != oldFn.Spec.InvokeStrategy.ExecutionStrategy.MinScale {
+	// 		replicas := int32(newFn.Spec.InvokeStrategy.ExecutionStrategy.MinScale)
+	// 		hpa.Spec.MinReplicas = &replicas
+	// 		hpaChanged = true
+	// 	}
 
-		if newFn.Spec.InvokeStrategy.ExecutionStrategy.MaxScale != oldFn.Spec.InvokeStrategy.ExecutionStrategy.MaxScale {
-			hpa.Spec.MaxReplicas = int32(newFn.Spec.InvokeStrategy.ExecutionStrategy.MaxScale)
-			hpaChanged = true
-		}
+	// 	if newFn.Spec.InvokeStrategy.ExecutionStrategy.MaxScale != oldFn.Spec.InvokeStrategy.ExecutionStrategy.MaxScale {
+	// 		hpa.Spec.MaxReplicas = int32(newFn.Spec.InvokeStrategy.ExecutionStrategy.MaxScale)
+	// 		hpaChanged = true
+	// 	}
 
-		if !reflect.DeepEqual(newFn.Spec.InvokeStrategy.ExecutionStrategy.Metrics, oldFn.Spec.InvokeStrategy.ExecutionStrategy.Metrics) {
-			hpa.Spec.Metrics = newFn.Spec.InvokeStrategy.ExecutionStrategy.Metrics
-			hpaChanged = true
-		}
+	// 	if !reflect.DeepEqual(newFn.Spec.InvokeStrategy.ExecutionStrategy.Metrics, oldFn.Spec.InvokeStrategy.ExecutionStrategy.Metrics) {
+	// 		hpa.Spec.Metrics = newFn.Spec.InvokeStrategy.ExecutionStrategy.Metrics
+	// 		hpaChanged = true
+	// 	}
 
-		if !reflect.DeepEqual(newFn.Spec.InvokeStrategy.ExecutionStrategy.Behavior, oldFn.Spec.InvokeStrategy.ExecutionStrategy.Behavior) {
-			hpa.Spec.Behavior = newFn.Spec.InvokeStrategy.ExecutionStrategy.Behavior
-			hpaChanged = true
-		}
+	// 	if !reflect.DeepEqual(newFn.Spec.InvokeStrategy.ExecutionStrategy.Behavior, oldFn.Spec.InvokeStrategy.ExecutionStrategy.Behavior) {
+	// 		hpa.Spec.Behavior = newFn.Spec.InvokeStrategy.ExecutionStrategy.Behavior
+	// 		hpaChanged = true
+	// 	}
 
-		if hpaChanged {
-			err := wasm.hpaops.UpdateHpa(ctx, hpa)
-			if err != nil {
-				wasm.updateStatus(oldFn, err, "error updating HPA while updating function")
-				return err
-			}
-		}
-	}
+	// 	if hpaChanged {
+	// 		err := wasm.hpaops.UpdateHpa(ctx, hpa)
+	// 		if err != nil {
+	// 			wasm.updateStatus(oldFn, err, "error updating HPA while updating function")
+	// 			return err
+	// 		}
+	// 	}
+	// }
 
 	deployChanged := false
 

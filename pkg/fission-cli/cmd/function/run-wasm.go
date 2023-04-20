@@ -97,9 +97,9 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 	}
 
     //以下是为wasm文件创建package和archive
-	// var pkgMetadata *metav1.ObjectMeta
+	var pkgMetadata *metav1.ObjectMeta
 	var envName string
-	// var pkg *fv1.Package
+	var pkg *fv1.Package
 
 	if len(pkgName) > 0 {
 		
@@ -117,14 +117,14 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 			if obj == nil {
 				return errors.Errorf("please create package %v spec file before referencing it", pkgName)
 			}
-			// pkg = obj.(*fv1.Package)
-			// pkgMetadata = &pkg.ObjectMeta
+			pkg = obj.(*fv1.Package)
+			pkgMetadata = &pkg.ObjectMeta
 		} else {
 			// use existing package
-			// pkg, err = opts.Client().V1().Package().Get(&metav1.ObjectMeta{
-			// 	Namespace: fnNamespace,
-			// 	Name:      pkgName,
-			// })
+			pkg, err = opts.Client().V1().Package().Get(&metav1.ObjectMeta{
+				Namespace: fnNamespace,
+				Name:      pkgName,
+			})
 			_, err = opts.Client().V1().Package().Get(&metav1.ObjectMeta{
 				Namespace: fnNamespace,
 				Name:      pkgName,
@@ -133,7 +133,7 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("read package in '%v' in Namespace: %s. Package needs to be present in the same namespace as function", pkgName, fnNamespace))
 			}
-			// pkgMetadata = &pkg.ObjectMeta
+			pkgMetadata = &pkg.ObjectMeta
 		}
 
 		// envName = pkg.Spec.Environment.Name
@@ -182,7 +182,8 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
         var envNamespace string
 		srcArchiveFiles := input.StringSlice(flagkey.PkgSrcArchive)
 		var deployArchiveFiles []string
-		noZip := false
+		//不将wasm文件打包为zip
+		noZip := true
 		code := input.String(flagkey.PkgCode)
 		if len(code) == 0 {
 			deployArchiveFiles = input.StringSlice(flagkey.PkgDeployArchive)
@@ -205,7 +206,7 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 		// create new package in the same namespace as the function.
 		// pkgMetadata, err = _package.CreateFakePackage(input, opts.Client(), pkgName, fnNamespace, envName, envNamespace,
 		// 	srcArchiveFiles, deployArchiveFiles, buildcmd, specDir, opts.specFile, noZip)
-		_, err = _package.CreateFakePackage(input, opts.Client(), pkgName, fnNamespace, envName, envNamespace,
+		_, err = _package.CreatePackage(input, opts.Client(), pkgName, fnNamespace, envName, envNamespace,
 		srcArchiveFiles, deployArchiveFiles, buildcmd, specDir, opts.specFile, noZip)
 		if err != nil {
 			return errors.Wrap(err, "error creating package")
@@ -218,10 +219,10 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 	var port int
 	var command, args string
 
-	// imageName = pkg.Spec.Deployment.URL
+	imageName = pkg.Spec.Deployment.URL
 	
 	port = input.Int(flagkey.FnPort)
-	command = input.String(flagkey.FnCommand)
+	// command = input.String(flagkey.FnCommand)
 	args = input.String(flagkey.FnArgs)
 
 	var secrets []fv1.SecretReference
@@ -299,6 +300,12 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 		return err
 	}
 
+	//加上wasm模块必须的annotation
+	urlAnnotation:=pkg.Spec.Deployment.URL
+	nameAnnotation:=pkg.Name+".wasm"
+    opts.function.ObjectMeta.Annotations["wasm.module.url"]=urlAnnotation
+	opts.function.ObjectMeta.Annotations["wasm.module.filename"]=nameAnnotation
+    
 	container := &apiv1.Container{
 		Name:  fnName,
 		Image: imageName,
@@ -309,6 +316,7 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 			},
 		},
 	}
+	command=nameAnnotation
 	if command != "" {
 		container.Command = strings.Split(command, " ")
 	}
@@ -316,24 +324,24 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 		container.Args = strings.Split(args, " ")
 	}
 
-	// opts.function.Spec.Package = fv1.FunctionPackageRef{
-	// 	FunctionName: entrypoint,
-	// 	PackageRef: fv1.PackageRef{
-	// 		Namespace:       pkgMetadata.Namespace,
-	// 		Name:            pkgMetadata.Name,
-	// 		ResourceVersion: pkgMetadata.ResourceVersion,
-	// 	},
-	// }
-    // 以下为测试版本 正式版在上面 
-
 	opts.function.Spec.Package = fv1.FunctionPackageRef{
 		FunctionName: entrypoint,
 		PackageRef: fv1.PackageRef{
-			Namespace:       fnNamespace,
-			Name:            fnName,
-			// ResourceVersion: pkgMetadata.ResourceVersion,
+			Namespace:       pkgMetadata.Namespace,
+			Name:            pkgMetadata.Name,
+			ResourceVersion: pkgMetadata.ResourceVersion,
 		},
 	}
+    // 以下为测试版本 正式版在上面 
+
+	// opts.function.Spec.Package = fv1.FunctionPackageRef{
+	// 	FunctionName: entrypoint,
+	// 	PackageRef: fv1.PackageRef{
+	// 		Namespace:       fnNamespace,
+	// 		Name:            fnName,
+	// 		// ResourceVersion: pkgMetadata.ResourceVersion,
+	// 	},
+	// }
 
 	opts.function.Spec.PodSpec = &apiv1.PodSpec{
 		Containers:                    []apiv1.Container{*container},

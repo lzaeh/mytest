@@ -358,7 +358,8 @@ func StartExecutor(ctx context.Context, logger *zap.Logger, functionNamespace st
 	executorTypes[ndm.GetTypeName(ctx)] = ndm
 	executorTypes[cnm.GetTypeName(ctx)] = cnm
 	executorTypes[wsm.GetTypeName(ctx)] = wsm
-
+    
+	//在yaml文件的环境变量中设置，为false
 	adoptExistingResources, _ := strconv.ParseBool(os.Getenv("ADOPT_EXISTING_RESOURCES"))
 
 	wg := &sync.WaitGroup{}

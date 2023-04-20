@@ -14,6 +14,17 @@ snapshot:
 builds:
   - &build-linux
     id: builder
+    ldflags:
+      - -s -w
+      - -X github.com/1999huye1104/wasm-faas/pkg/info.GitCommit={{.ShortCommit}}
+      - -X github.com/1999huye1104/wasm-faas/pkg/info.BuildDate={{.Date}}
+      - -X github.com/1999huye1104/wasm-faas/pkg/info.Version={{.Tag}}
+    gcflags:
+      - all=-trimpath={{ if index .Env "GITHUB_WORKSPACE"}}{{ .Env.GITHUB_WORKSPACE }}{{ else }}{{ .Env.PWD }}{{ end }}
+    asmflags:
+      - all=-trimpath={{ if index .Env "GITHUB_WORKSPACE"}}{{ .Env.GITHUB_WORKSPACE }}{{ else }}{{ .Env.PWD }}{{ end }}
+    env:
+      - CGO_ENABLED=0
     goos:
       - linux
     goarch:

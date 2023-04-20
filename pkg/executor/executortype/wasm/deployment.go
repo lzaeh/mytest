@@ -61,9 +61,9 @@ func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, d
 		}
 		otelUtils.SpanTrackEvent(ctx, "deploymentCreated", otelUtils.GetAttributesForDeployment(depl)...)
 		// 一下在实际工作中要使用！！！
-		// if minScale > 0 {
-		// 	depl, err = wasm.waitForDeploy(ctx, depl, minScale, specializationTimeout)
-		// }
+		if minScale > 0 {
+			depl, err = wasm.waitForDeploy(ctx, depl, minScale, specializationTimeout)
+		}
 		return depl, err
 	}
 
@@ -163,6 +163,10 @@ func (wasm *Wasm) getDeploymentSpec(ctx context.Context, fn *fv1.Function, targe
 
 	podAnnotations := make(map[string]string)
 
+	for k, v := range deployAnnotations {
+		podAnnotations[k] = v
+	}
+
 	if wasm.useIstio {
 		podAnnotations["sidecar.istio.io/inject"] = "false"
 	}
@@ -172,6 +176,9 @@ func (wasm *Wasm) getDeploymentSpec(ctx context.Context, fn *fv1.Function, targe
 	for k, v := range deployLabels {
 		podLabels[k] = v
 	}
+
+
+    
 
 	// Set maxUnavailable and maxSurge to 20% is because we want
 	// fission to rollout newer function version gradually without
@@ -190,13 +197,13 @@ func (wasm *Wasm) getDeploymentSpec(ctx context.Context, fn *fv1.Function, targe
 	// rollback, set RevisionHistoryLimit to 0 to disable this feature.
 	revisionHistoryLimit := int32(0)
 
-	resources := wasm.getResources(fn)
+	// resources := wasm.getResources(fn)
 
-	// Other executor types rely on Environments to add configmaps and secrets
-	envFromSources, err := util.ConvertConfigSecrets(ctx, fn, wasm.kubernetesClient)
-	if err != nil {
-		return nil, err
-	}
+	// // Other executor types rely on Environments to add configmaps and secrets
+	// envFromSources, err := util.ConvertConfigSecrets(ctx, fn, wasm.kubernetesClient)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	rvCount, err := referencedResourcesRVSum(ctx, wasm.kubernetesClient, fn.ObjectMeta.Namespace, fn.Spec.Secrets, fn.Spec.ConfigMaps)
 	if err != nil {
@@ -211,25 +218,25 @@ func (wasm *Wasm) getDeploymentSpec(ctx context.Context, fn *fv1.Function, targe
 		Name:                   fn.ObjectMeta.Name,
 		ImagePullPolicy:        wasm.runtimeImagePullPolicy,
 		TerminationMessagePath: "/dev/termination-log",
-		Lifecycle: &apiv1.Lifecycle{
-			PreStop: &apiv1.LifecycleHandler{
-				Exec: &apiv1.ExecAction{
-					Command: []string{
-						"/bin/sleep",
-						fmt.Sprintf("%v", gracePeriodSeconds),
-					},
-				},
-			},
-		},
+		// Lifecycle: &apiv1.Lifecycle{
+		// 	PreStop: &apiv1.LifecycleHandler{
+		// 		Exec: &apiv1.ExecAction{
+		// 			Command: []string{
+		// 				"/bin/sleep",
+		// 				fmt.Sprintf("%v", gracePeriodSeconds),
+		// 			},
+		// 		},
+		// 	},
+		// },
 		Env: []apiv1.EnvVar{
 			{
 				Name:  fv1.ResourceVersionCount,
 				Value: fmt.Sprintf("%v", rvCount),
 			},
 		},
-		EnvFrom: envFromSources,
+		// EnvFrom: envFromSources,
 		// https://istio.io/docs/setup/kubernetes/additional-setup/requirements/
-		Resources: resources,
+		// Resources: resources,
 	}
 	
 	podSpec, err := util.MergePodSpec(&apiv1.PodSpec{
