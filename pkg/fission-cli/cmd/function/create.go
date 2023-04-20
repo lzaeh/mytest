@@ -127,10 +127,11 @@ func (opts *CreateSubCommand) complete(input cli.Input) error {
 
 	var pkgMetadata *metav1.ObjectMeta
 	var envName string
+	
 
 	if len(pkgName) > 0 {
 		var pkg *fv1.Package
-
+		
 		if toSpec {
 
 			fr, err := spec.ReadSpecs(specDir, specIgnore, false)

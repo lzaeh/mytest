@@ -96,7 +96,7 @@ func (executor *Executor) getServiceForFunctionAPI(w http.ResponseWriter, r *htt
 			http.Error(w, html.EscapeString(errMsg), http.StatusTooManyRequests)
 			return
 		}
-	} else if t == fv1.ExecutorTypeNewdeploy || t == fv1.ExecutorTypeContainer {
+	} else if t == fv1.ExecutorTypeNewdeploy || t == fv1.ExecutorTypeContainer || t == fv1.ExecutorTypeWasm{
 		fsvc, err := et.GetFuncSvcFromCache(ctx, fn)
 		if err == nil {
 			if et.IsValid(ctx, fsvc) {

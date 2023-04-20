@@ -39,7 +39,7 @@ spec:
           value: "{{ .Values.pullPolicy }}"
         - name: RUNTIME_IMAGE_PULL_POLICY
           value: "{{ .Values.pullPolicy }}"
-        - name: ADOPT_EXISTING_RESOURCES
+        - name: 
           value: {{ .Values.executor.adoptExistingResources | default false | quote }}
         - name: POD_READY_TIMEOUT
           value: {{ .Values.executor.podReadyTimeout | default false | quote }}

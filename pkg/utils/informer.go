@@ -34,6 +34,8 @@ func GetInformerFactoryByExecutor(client kubernetes.Interface, executorType v1.E
 		k8sInformers.WithTweakListOptions(func(options *metav1.ListOptions) {
 			options.LabelSelector = labelSelector.String()
 		}))
+
+	
 	return informerFactory, nil
 }
 

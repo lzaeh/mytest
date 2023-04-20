@@ -211,7 +211,7 @@ func TestExecutor(t *testing.T) {
 	p, err = fissionClient.CoreV1().Packages(fissionNs).Create(context.TODO(), p, metav1.CreateOptions{})
 	if err != nil {
 		log.Panicf("failed to create package: %v", err)
-	}
+	} 
 
 	// create a function
 	f := &fv1.Function{

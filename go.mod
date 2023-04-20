@@ -1,6 +1,6 @@
 module github.com/fission/fission
 
-go 1.19
+go 1.18
 
 require (
 	github.com/Shopify/sarama v1.36.0
@@ -173,4 +173,8 @@ require (
 	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
+)
+
+replace(
+    github.com/fission/fission => ../../
 )

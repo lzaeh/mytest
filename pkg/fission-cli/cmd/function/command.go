@@ -202,6 +202,34 @@ func Commands() *cobra.Command {
 		},
 	})
 
+	runWasmCmd := &cobra.Command{
+		Use:     "run-wasm",
+		Aliases: []string{"runwm"},
+		Short:   "Alpha: Run a webassembly function",
+		RunE:    wrapper.Wrapper(RunWasm),
+	}
+	wrapper.SetFlags(runWasmCmd, flag.FlagSet{
+		Required: []flag.Flag{flag.FnName, flag.FnImageName},
+		Optional: []flag.Flag{
+			flag.FnPort, flag.FnCommand, flag.FnArgs,
+			flag.FnCfgMap, flag.FnSecret,
+			flag.FnExecutionTimeout,
+			flag.FnIdleTimeout,
+			flag.FnTerminationGracePeriod,
+			flag.Labels, flag.Annotation,
+		    flag.FnEntryPoint,flag.FnPkgName,
+			flag.FnTerminationGracePeriod,flag.PkgDeployArchive,
+			flag.PkgBuildCmd,
+
+			// flag for wasm to use.
+			flag.RunTimeMinCPU, flag.RunTimeMaxCPU, flag.RunTimeMinMemory,
+			flag.RunTimeMaxMemory, flag.ReplicasMin,
+			flag.ReplicasMax, flag.RunTimeTargetCPU,
+
+			flag.NamespaceFunction, flag.SpecSave, flag.SpecDry,
+		},
+	})
+
 	listPodsCmd := &cobra.Command{
 		Use:     "pods",
 		Aliases: []string{"pod", "po"},
@@ -220,7 +248,7 @@ func Commands() *cobra.Command {
 		Short:   "Create, update and manage functions",
 	}
 	command.AddCommand(createCmd, getCmd, getmetaCmd, updateCmd, deleteCmd, listCmd, logsCmd, testCmd,
-		runContainerCmd, updateContainerCmd, listPodsCmd)
+		runContainerCmd, updateContainerCmd,runWasmCmd, listPodsCmd)
 
 	return command
 }
