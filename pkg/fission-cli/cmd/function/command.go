@@ -215,7 +215,6 @@ func Commands() *cobra.Command {
 			flag.FnCfgMap, flag.FnSecret,
 			flag.FnExecutionTimeout,
 			flag.FnIdleTimeout,
-			flag.FnTerminationGracePeriod,
 			flag.Labels, flag.Annotation,
 		    flag.FnEntryPoint,flag.FnPkgName,
 			flag.FnTerminationGracePeriod,flag.PkgDeployArchive,

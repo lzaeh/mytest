@@ -29,10 +29,10 @@ builds:
       - linux
     goarch:
       - amd64
-      - arm64
-      - arm
-    goarm:
-      - 7
+      # - arm64
+      # - arm
+    # goarm:
+    #   - 7
     binary: builder
     dir: ./cmd/builder
   - <<: *build-linux
@@ -47,8 +47,8 @@ builds:
     id: fission-cli
     goos:
       - linux
-      - windows
-      - darwin
+      # - windows
+      # - darwin
     binary: fission
     dir: ./cmd/fission-cli
     ignore:
@@ -70,7 +70,7 @@ builds:
     dir: ./cmd/reporter
 
 dockers:
-  - &docker-arm64
+  - &docker-amd64
     use: buildx
     goos: linux
     goarch: amd64
@@ -91,7 +91,7 @@ dockers:
     dockerfile: cmd/fetcher/Dockerfile
     build_flag_templates:
       - "--platform=linux/amd64"
-  - <<: *docker-arm64
+  - <<: *docker-amd64
     ids:
       - fission-bundle
     image_templates:
@@ -101,7 +101,7 @@ dockers:
     build_flag_templates:
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.created={{.Date}}"
-  - <<: *docker-arm64
+  - <<: *docker-amd64
     ids:
       - pre-upgrade-checks
     image_templates:
@@ -110,7 +110,7 @@ dockers:
     dockerfile: cmd/preupgradechecks/Dockerfile
     build_flag_templates:
       - "--platform=linux/amd64"
-  - <<: *docker-arm64
+  - <<: *docker-amd64
     ids:
       - reporter
     image_templates:
