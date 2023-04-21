@@ -82,7 +82,7 @@ dockers:
     dockerfile: cmd/builder/Dockerfile
     build_flag_templates:
       - "--platform=linux/amd64"
-  - <<: *docker-arm64
+  - <<: *docker-amd64
     ids:
       - fetcher
     image_templates:
