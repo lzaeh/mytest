@@ -305,12 +305,12 @@ func (es ExecutionStrategy) Validate() error {
 	result := &multierror.Error{}
 
 	switch es.ExecutorType {
-	case ExecutorTypeNewdeploy, ExecutorTypePoolmgr, ExecutorTypeContainer: // no op
+	case ExecutorTypeNewdeploy, ExecutorTypePoolmgr, ExecutorTypeContainer,ExecutorTypeWasm: // no op
 	default:
 		result = multierror.Append(result, MakeValidationErr(ErrorUnsupportedType, "ExecutionStrategy.ExecutorType", es.ExecutorType, "not a valid executor type"))
 	}
 
-	if es.ExecutorType == ExecutorTypeNewdeploy || es.ExecutorType == ExecutorTypeContainer {
+	if es.ExecutorType == ExecutorTypeNewdeploy || es.ExecutorType == ExecutorTypeContainer ||es.ExecutorType == ExecutorTypeWasm{
 		if es.MinScale < 0 {
 			result = multierror.Append(result, MakeValidationErr(ErrorInvalidValue, "ExecutionStrategy.MinScale", es.MinScale, "minimum scale must be greater than or equal to 0"))
 		}

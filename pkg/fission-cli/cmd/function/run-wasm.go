@@ -325,8 +325,8 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 	}
 
     opts.function.Spec.Environment = fv1.EnvironmentReference{
-		Name:      "wasm",
-		Namespace: "default",
+		Name:             envName,
+		Namespace:   envNamespace,
 	}
 
 	opts.function.Spec.Package = fv1.FunctionPackageRef{

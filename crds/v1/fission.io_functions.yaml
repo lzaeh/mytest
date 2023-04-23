@@ -49,7 +49,7 @@ spec:
                       ExecutorType:
                         description: "ExecutorType is the executor type of function
                           used. Defaults to \"poolmgr\". \n Available value: - poolmgr
-                          - newdeploy - container"
+                          - newdeploy - container - wasm"
                         type: string
                       MaxScale:
                         description: This is only for newdeploy to set up maximum
