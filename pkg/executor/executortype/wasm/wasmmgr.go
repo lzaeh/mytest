@@ -120,7 +120,7 @@ func MakeWasm(
 	wasm.svcLister = svcInformer.Lister()
 	wasm.svcListerSynced = svcInformer.Informer().HasSynced
 
-	funcInformer.Informer().AddEventHandler(wasm.FuncInformerHandler(ctx))
+	// funcInformer.Informer().AddEventHandler(wasm.FuncInformerHandler(ctx))
 	return wasm, nil
 }
 
