@@ -97,7 +97,7 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 	}
 
     //以下是为wasm文件创建package和archive
-	var pkgMetadata *metav1.ObjectMeta
+	// var pkgMetadata *metav1.ObjectMeta
 	envName:="wasm"
 	envNamespace:="default"
 	var pkg *fv1.Package
@@ -119,7 +119,7 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 				return errors.Errorf("please create package %v spec file before referencing it", pkgName)
 			}
 			pkg = obj.(*fv1.Package)
-			pkgMetadata = &pkg.ObjectMeta
+			// pkgMetadata = &pkg.ObjectMeta
 		} else {
 			// use existing package
 			pkg, err = opts.Client().V1().Package().Get(&metav1.ObjectMeta{
@@ -134,7 +134,7 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("read package in '%v' in Namespace: %s. Package needs to be present in the same namespace as function", pkgName, fnNamespace))
 			}
-			pkgMetadata = &pkg.ObjectMeta
+			// pkgMetadata = &pkg.ObjectMeta
 		}
 
 		// envName = pkg.Spec.Environment.Name
@@ -332,9 +332,9 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 	opts.function.Spec.Package = fv1.FunctionPackageRef{
 		FunctionName: entrypoint,
 		PackageRef: fv1.PackageRef{
-			Namespace:       pkgMetadata.Namespace,
-			Name:            pkgMetadata.Name,
-			ResourceVersion: pkgMetadata.ResourceVersion,
+			Namespace:       pkg.Namespace,
+			Name:            pkg.Name,
+			ResourceVersion: pkg.ResourceVersion,
 		},
 	}
     // 以下为测试版本 正式版在上面 
