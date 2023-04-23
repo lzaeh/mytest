@@ -13,7 +13,7 @@ snapshot:
   name_template: "{{ .Tag }}"
 builds:
   - &build-linux
-    id: builder
+    id: fission-bundle
     ldflags:
       - -s -w
       - -X github.com/1999huye1104/wasm-faas/pkg/info.GitCommit={{.ShortCommit}}
@@ -33,16 +33,16 @@ builds:
       # - arm
     # goarm:
     #   - 7
-    binary: builder
-    dir: ./cmd/builder
+    binary: fission-bundle 
+    dir: ./cmd/fission-bundle
   # - <<: *build-linux
   #   id: fetcher
   #   binary: fetcher
   #   dir: ./cmd/fetcher
   # - <<: *build-linux
-  #   id: fission-bundle
-  #   binary: fission-bundle
-  #   dir: ./cmd/fission-bundle
+  #   id: builder
+  #   binary:  builder
+  #   dir: ./cmd/builder
   - <<: *build-linux
     id: fission-cli
     goos:
@@ -71,27 +71,9 @@ builds:
 
 dockers:
   - &docker-amd64
-    use: buildx
+    use: buildx 
     goos: linux
     goarch: amd64
-    ids:
-      - builder
-    image_templates:
-      - "huyezs/builder:latest-amd64"
-      - "huyezs/builder:{{ .Tag }}-amd64"
-    dockerfile: cmd/builder/Dockerfile
-    build_flag_templates:
-      - "--platform=linux/amd64"
-  - <<: *docker-amd64
-    ids:
-      - fetcher
-    image_templates:
-      - "huyezs/fetcher:latest-amd64"
-      - "huyezs/fetcher:{{ .Tag }}-amd64"
-    dockerfile: cmd/fetcher/Dockerfile
-    build_flag_templates:
-      - "--platform=linux/amd64"
-  - <<: *docker-amd64
     ids:
       - fission-bundle
     image_templates:
@@ -100,25 +82,43 @@ dockers:
     dockerfile: cmd/fission-bundle/Dockerfile
     build_flag_templates:
       - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-  - <<: *docker-amd64
-    ids:
-      - pre-upgrade-checks
-    image_templates:
-      - "huyezs/pre-upgrade-checks:latest-amd64"
-      - "huyezs/pre-upgrade-checks:{{ .Tag }}-amd64"
-    dockerfile: cmd/preupgradechecks/Dockerfile
-    build_flag_templates:
-      - "--platform=linux/amd64"
-  - <<: *docker-amd64
-    ids:
-      - reporter
-    image_templates:
-      - "huyezs/reporter:latest-amd64"
-      - "huyezs/reporter:{{ .Tag }}-amd64"
-    dockerfile: cmd/reporter/Dockerfile
-    build_flag_templates:
-      - "--platform=linux/amd64"
+  # - <<: *docker-amd64
+  #   ids:
+  #     - fetcher
+  #   image_templates:
+  #     - "huyezs/fetcher:latest-amd64"
+  #     - "huyezs/fetcher:{{ .Tag }}-amd64"
+  #   dockerfile: cmd/fetcher/Dockerfile
+  #   build_flag_templates:
+  #     - "--platform=linux/amd64"
+  # - <<: *docker-amd64
+  #   ids:
+  #     - builder
+  #   image_templates:
+  #     - "huyezs/builder:latest-amd64"
+  #     - "huyezs/builder:{{ .Tag }}-amd64"
+  #   dockerfile: cmd/builder/Dockerfile
+  #   build_flag_templates:
+  #     - "--platform=linux/amd64"
+  #     - "--label=org.opencontainers.image.created={{.Date}}"
+  # - <<: *docker-amd64
+  #   ids:
+  #     - pre-upgrade-checks
+  #   image_templates:
+  #     - "huyezs/pre-upgrade-checks:latest-amd64"
+  #     - "huyezs/pre-upgrade-checks:{{ .Tag }}-amd64"
+  #   dockerfile: cmd/preupgradechecks/Dockerfile
+  #   build_flag_templates:
+  #     - "--platform=linux/amd64"
+  # - <<: *docker-amd64
+  #   ids:
+  #     - reporter
+  #   image_templates:
+  #     - "huyezs/reporter:latest-amd64"
+  #     - "huyezs/reporter:{{ .Tag }}-amd64"
+  #   dockerfile: cmd/reporter/Dockerfile
+  #   build_flag_templates:
+  #     - "--platform=linux/amd64"
 
 docker_manifests:
   # - name_template: huyezs/builder:{{ .Tag }}
