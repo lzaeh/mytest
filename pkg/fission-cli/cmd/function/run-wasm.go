@@ -302,12 +302,13 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 	//加上wasm模块必须的annotation
 	urlAnnotation:=pkg.Spec.Deployment.URL
 	nameAnnotation:=pkg.Name+".wasm"
+	opts.function.ObjectMeta.Annotations=make(map[string]string)
     opts.function.ObjectMeta.Annotations["wasm.module.url"]=urlAnnotation
 	opts.function.ObjectMeta.Annotations["wasm.module.filename"]=nameAnnotation
     
 	container := &apiv1.Container{
 		Name:  fnName,
-		Image: fnName,
+		Image: pkg.Name,
 		Ports: []apiv1.ContainerPort{
 			{
 				Name:          "http-env",
