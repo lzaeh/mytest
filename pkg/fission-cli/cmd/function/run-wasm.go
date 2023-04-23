@@ -216,11 +216,9 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 	//以上wasm文件创建package和archive完成
 
 
-	var imageName string
 	var port int
 	var command, args string
 
-	imageName = pkg.Spec.Deployment.URL
 	
 	port = input.Int(flagkey.FnPort)
 	// command = input.String(flagkey.FnCommand)
@@ -309,7 +307,7 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
     
 	container := &apiv1.Container{
 		Name:  fnName,
-		Image: imageName,
+		Image: fnName,
 		Ports: []apiv1.ContainerPort{
 			{
 				Name:          "http-env",
