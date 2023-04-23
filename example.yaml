@@ -1,0 +1,46 @@
+---
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: wasmedge
+handler: wasmedge
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ex-wasm
+  labels:
+    svc: ex-wasm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      svc: ex-wasm
+  template:
+    metadata:
+      name: ex-wasm
+      annotations:
+        wasm.module.url: http://43.130.38.65:8080/wasi-demo-app.wasm
+        wasm.module.filename: wasi-demo-app.wasm
+      labels:
+        svc: ex-wasm
+    spec:
+      runtimeClassName: wasmedge
+      containers:
+        - name: ex-wasm
+          image: wasi-demo-app.wasm
+          command: ["wasi-demo-app.wasm"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ex-wasm
+  labels:
+    svc: ex-wasm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 1234
+  selector:
+    svc: ex-wasm

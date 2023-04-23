@@ -98,7 +98,8 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 
     //以下是为wasm文件创建package和archive
 	var pkgMetadata *metav1.ObjectMeta
-	var envName string
+	envName:="wasm"
+	envNamespace:="default"
 	var pkg *fv1.Package
 
 	if len(pkgName) > 0 {
@@ -179,7 +180,7 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 		// 		}
 		// 	}
 		// }
-        var envNamespace string
+        
 		srcArchiveFiles := input.StringSlice(flagkey.PkgSrcArchive)
 		var deployArchiveFiles []string
 		//不将wasm文件打包为zip
@@ -322,6 +323,11 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 	}
 	if args != "" {
 		container.Args = strings.Split(args, " ")
+	}
+
+    opts.function.Spec.Environment = fv1.EnvironmentReference{
+		Name:      "wasm",
+		Namespace: "default",
 	}
 
 	opts.function.Spec.Package = fv1.FunctionPackageRef{
