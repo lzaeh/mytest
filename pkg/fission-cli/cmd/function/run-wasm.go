@@ -207,7 +207,7 @@ func (opts *RunWasmSubCommand) complete(input cli.Input) error {
 		// create new package in the same namespace as the function.
 		// pkgMetadata, err = _package.CreateFakePackage(input, opts.Client(), pkgName, fnNamespace, envName, envNamespace,
 		// 	srcArchiveFiles, deployArchiveFiles, buildcmd, specDir, opts.specFile, noZip)
-		_, err = _package.CreatePackage(input, opts.Client(), pkgName, fnNamespace, envName, envNamespace,
+		pkg, err = _package.CreateWasmPackage(input, opts.Client(), pkgName, fnNamespace, envName, envNamespace,
 		srcArchiveFiles, deployArchiveFiles, buildcmd, specDir, opts.specFile, noZip)
 		if err != nil {
 			return errors.Wrap(err, "error creating package")
