@@ -39,6 +39,7 @@ import (
 	"github.com/fission/fission/pkg/executor/executortype/container"
 	"github.com/fission/fission/pkg/executor/executortype/newdeploy"
 	"github.com/fission/fission/pkg/executor/executortype/poolmgr"
+	"github.com/fission/fission/pkg/executor/executortype/wasm"
 	"github.com/fission/fission/pkg/executor/fscache"
 	"github.com/fission/fission/pkg/executor/reaper"
 	"github.com/fission/fission/pkg/executor/util"
@@ -48,7 +49,6 @@ import (
 	"github.com/fission/fission/pkg/utils"
 	"github.com/fission/fission/pkg/utils/metrics"
 	otelUtils "github.com/fission/fission/pkg/utils/otel"
-	"github.com/fission/fission/pkg/executor/executortype/wasm"
 )
 
 type (
@@ -337,18 +337,18 @@ func StartExecutor(ctx context.Context, logger *zap.Logger, functionNamespace st
 		return errors.Wrap(err, "container manager creation failed")
 	}
 
-    //加入Wasm模块
+	//加入Wasm模块
 	wasmInformerFactory, err := utils.GetInformerFactoryByExecutor(kubernetesClient, fv1.ExecutorTypeWasm, time.Minute*30)
 	if err != nil {
 		return err
 	}
 	wasmDeplnformer := wasmInformerFactory.Apps().V1().Deployments()
 	wasmSvcInformer := wasmInformerFactory.Core().V1().Services()
-	wsm,err:=wasm.MakeWasm(
-		ctx, logger, 
-		fissionClient, kubernetesClient, 
-		functionNamespace,executorInstanceID, funcInformer,
-		wasmDeplnformer,wasmSvcInformer)
+	wsm, err := wasm.MakeWasm(
+		ctx, logger,
+		fissionClient, kubernetesClient,
+		functionNamespace, executorInstanceID, funcInformer,
+		wasmDeplnformer, wasmSvcInformer)
 	if err != nil {
 		return errors.Wrap(err, "wasm manager creation failed")
 	}
@@ -358,7 +358,7 @@ func StartExecutor(ctx context.Context, logger *zap.Logger, functionNamespace st
 	executorTypes[ndm.GetTypeName(ctx)] = ndm
 	executorTypes[cnm.GetTypeName(ctx)] = cnm
 	executorTypes[wsm.GetTypeName(ctx)] = wsm
-    
+
 	//在yaml文件的环境变量中设置，为false
 	adoptExistingResources, _ := strconv.ParseBool(os.Getenv("ADOPT_EXISTING_RESOURCES"))
 
@@ -398,7 +398,6 @@ func StartExecutor(ctx context.Context, logger *zap.Logger, functionNamespace st
 			cnmSvcInformer.Informer(),
 			wasmDeplnformer.Informer(),
 			wasmSvcInformer.Informer(),
-
 		})
 	if err != nil {
 		return err
