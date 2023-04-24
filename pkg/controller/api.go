@@ -277,6 +277,7 @@ func (api *API) GetHandler() http.Handler {
 }
 
 func (api *API) Serve(ctx context.Context, port int) {
+	api.logger.Info("******code修改成功*********")
 	handler := otel.GetHandlerWithOTEL(api.GetHandler(), "fission-controller", otel.UrlsToIgnore("/healthz"))
 	go metrics.ServeMetrics(ctx, api.logger)
 	httpserver.StartServer(ctx, api.logger, "controller", fmt.Sprintf("%d", port), handler)
