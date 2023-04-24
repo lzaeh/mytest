@@ -33,6 +33,7 @@ import (
 	"github.com/fission/fission/pkg/controller/client"
 	storageSvcClient "github.com/fission/fission/pkg/storagesvc/client"
 	"github.com/fission/fission/pkg/utils"
+	"github.com/fission/fission/pkg/fission-cli/console"
 )
 
 func UploadArchiveFile(ctx context.Context, client client.Interface, fileName string) (*fv1.Archive, error) {
@@ -61,7 +62,7 @@ func UploadArchiveFile(ctx context.Context, client client.Interface, fileName st
 
 		// storageSvc, err := client.V1().Misc().GetSvcURL("application=fission-storage")
 		storageSvc, err := client.V1().Misc().GetSvcURL("application=fission-storage")
-
+		console.Info(fmt.Sprintf("storagesvc address is %s", storageSvc))
 		storageSvcURL := "http://" + storageSvc
 		if err != nil { 
 			return nil, errors.Wrapf(err, "error getting fission storage service name")
