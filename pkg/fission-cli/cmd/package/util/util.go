@@ -59,9 +59,11 @@ func UploadArchiveFile(ctx context.Context, client client.Interface, fileName st
 			return nil, errors.Wrapf(err, "error uploading file %v", fileName)
 		}
 
+		// storageSvc, err := client.V1().Misc().GetSvcURL("application=fission-storage")
 		storageSvc, err := client.V1().Misc().GetSvcURL("application=fission-storage")
+
 		storageSvcURL := "http://" + storageSvc
-		if err != nil {
+		if err != nil { 
 			return nil, errors.Wrapf(err, "error getting fission storage service name")
 		}
 
