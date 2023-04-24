@@ -196,6 +196,7 @@ func (api *API) GetSvcName(w http.ResponseWriter, r *http.Request) {
 	service := services.Items[0]
 	// if r.URL.Query().Get("application")=="fission-storage"{
 	svcAddress:=service.Spec.ClusterIP+":80"
+	api.logger.Info(fmt.Sprintf("storagesvc address is %s", svcAddress))
 	fmt.Fprintf(w, svcAddress)
 	// }else{
 	// 	fmt.Fprintf(w, service.Name+"."+podNamespace)
