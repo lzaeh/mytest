@@ -51,7 +51,7 @@ func (wasm *Wasm) createOrGetSvc(ctx context.Context, fn *fv1.Function, deployLa
 			Type:     apiv1.ServiceTypeClusterIP,
 		},
 	}
-
+	wasm.logger.Info("******k8s创建service")
 	existingSvc, err := wasm.kubernetesClient.CoreV1().Services(svcNamespace).Get(ctx, svcName, metav1.GetOptions{})
 	if err == nil {
 		// to adopt orphan service

@@ -381,7 +381,7 @@ func (wasm *Wasm) fnCreate(ctx context.Context, fn *fv1.Function) (*fscache.Func
 		return nil, errors.Wrapf(err, "error creating service %v", objName)
 	}
 	svcAddress := fmt.Sprintf("%v.%v", svc.Name, svc.Namespace)
-
+	
 	depl, err := wasm.createOrGetDeployment(ctx, fn, objName, deployLabels, deployAnnotations, ns)
 	if err != nil {
 		wasm.logger.Error("error creating deployment", zap.Error(err), zap.String("deployment", objName))

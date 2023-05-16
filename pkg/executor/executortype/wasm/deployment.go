@@ -37,7 +37,7 @@ func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, d
 	if err != nil {
 		return nil, err
 	}
-
+    wasm.logger.Info("******k8s创建deployment")
 	existingDepl, err := wasm.kubernetesClient.AppsV1().Deployments(deployNamespace).Get(ctx, deployName, metav1.GetOptions{})
 	if err != nil && !k8s_err.IsNotFound(err) {
 		return nil, err
