@@ -238,7 +238,7 @@ func (wasm *Wasm) getDeploymentSpec(ctx context.Context, fn *fv1.Function, targe
 		// https://istio.io/docs/setup/kubernetes/additional-setup/requirements/
 		// Resources: resources,
 	}
-	runtimeClass:="wasmedge"
+	runtimeClass:="wasm"
 	podSpec, err := util.MergePodSpec(&apiv1.PodSpec{
 		RuntimeClassName:                              &runtimeClass,
 		Containers:                    []apiv1.Container{*container},
