@@ -179,6 +179,31 @@ func Commands() *cobra.Command {
 		},
 	})
 
+	runKuasarWasmCmd := &cobra.Command{
+		Use:     "run-kuasar-wasm",
+		Aliases: []string{"runkw"},
+		Short:   "Alpha: Run a container image as a wasm function with kuasar",
+		RunE:    wrapper.Wrapper(RunKuasarWasm),
+	}
+	wrapper.SetFlags(runKuasarWasmCmd, flag.FlagSet{
+		Required: []flag.Flag{flag.FnName, flag.FnImageName},
+		Optional: []flag.Flag{
+			flag.FnPort, flag.FnCommand, flag.FnArgs,
+			flag.FnCfgMap, flag.FnSecret,
+			flag.FnExecutionTimeout,
+			flag.FnIdleTimeout,
+			flag.FnTerminationGracePeriod,
+			flag.Labels, flag.Annotation,
+
+			// flag for newdeploy to use.
+			flag.RunTimeMinCPU, flag.RunTimeMaxCPU, flag.RunTimeMinMemory,
+			flag.RunTimeMaxMemory, flag.ReplicasMin,
+			flag.ReplicasMax, flag.RunTimeTargetCPU,
+
+			flag.NamespaceFunction, flag.SpecSave, flag.SpecDry,
+		},
+	})
+
 	updateContainerCmd := &cobra.Command{
 		Use:     "update-container",
 		Aliases: []string{"updatec"},
@@ -247,7 +272,7 @@ func Commands() *cobra.Command {
 		Short:   "Create, update and manage functions",
 	}
 	command.AddCommand(createCmd, getCmd, getmetaCmd, updateCmd, deleteCmd, listCmd, logsCmd, testCmd,
-		runContainerCmd, updateContainerCmd,runWasmCmd, listPodsCmd)
+		runContainerCmd,runKuasarWasmCmd,updateContainerCmd,runWasmCmd, listPodsCmd)
 
 	return command
 }
