@@ -191,7 +191,6 @@ func (opts *RunKuasarWasmSubCommand) complete(input cli.Input) error {
 	}
 
 	opts.function.Spec.PodSpec = &apiv1.PodSpec{
-		RestartPolicy:                 apiv1.RestartPolicyNever,
 		Containers:                    []apiv1.Container{*container},
 		TerminationGracePeriodSeconds: &fnGracePeriod,
 	}

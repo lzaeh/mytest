@@ -49,6 +49,8 @@ builds:
       - linux
       # - windows
       # - darwin
+    goarch:
+      - amd64
     binary: fission
     dir: ./cmd/fission-cli
     ignore:
