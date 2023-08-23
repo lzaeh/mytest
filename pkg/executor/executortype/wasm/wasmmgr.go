@@ -120,7 +120,7 @@ func MakeWasm(
 	wasm.svcLister = svcInformer.Lister()
 	wasm.svcListerSynced = svcInformer.Informer().HasSynced
 
-	// funcInformer.Informer().AddEventHandler(wasm.FuncInformerHandler(ctx))
+	funcInformer.Informer().AddEventHandler(wasm.FuncInformerHandler(ctx))
 	return wasm, nil
 }
 
@@ -731,31 +731,40 @@ func (wasm *Wasm) doIdleObjectReaper(ctx context.Context) {
 			continue
 		}
 
+		// go func() {
+		// 	deployObj := getDeploymentObj(fsvc.KubernetesObjects)
+		// 	if deployObj == nil {
+		// 		wasm.logger.Error("error finding function deployment", zap.Error(err), zap.String("function", fsvc.Function.Name))
+		// 		return
+		// 	}
+
+		// 	currentDeploy, err := wasm.kubernetesClient.AppsV1().
+		// 		Deployments(deployObj.Namespace).Get(ctx, deployObj.Name, metav1.GetOptions{})
+		// 	if err != nil {
+		// 		wasm.logger.Error("error getting function deployment", zap.Error(err), zap.String("function", fsvc.Function.Name))
+		// 		return
+		// 	}
+
+		// 	minScale := int32(fn.Spec.InvokeStrategy.ExecutionStrategy.MinScale)
+
+		// 	// do nothing if the current replicas is already lower than minScale
+		// 	if *currentDeploy.Spec.Replicas <= minScale {
+		// 		return
+		// 	}
+
+		// 	err = wasm.scaleDeployment(ctx, deployObj.Namespace, deployObj.Name, minScale)
+		// 	if err != nil {
+		// 		wasm.logger.Error("error scaling down function deployment", zap.Error(err), zap.String("function", fsvc.Function.Name))
+		// 	}
+		// }()
 		go func() {
-			deployObj := getDeploymentObj(fsvc.KubernetesObjects)
-			if deployObj == nil {
-				wasm.logger.Error("error finding function deployment", zap.Error(err), zap.String("function", fsvc.Function.Name))
-				return
-			}
-
-			currentDeploy, err := wasm.kubernetesClient.AppsV1().
-				Deployments(deployObj.Namespace).Get(ctx, deployObj.Name, metav1.GetOptions{})
+			log := wasm.logger.With(zap.String("function_name", fn.ObjectMeta.Name), zap.String("function_namespace", fn.ObjectMeta.Namespace))
+			log.Debug("start function delete handler")
+			err := wasm.deleteFunction(ctx, fn)
 			if err != nil {
-				wasm.logger.Error("error getting function deployment", zap.Error(err), zap.String("function", fsvc.Function.Name))
-				return
+				log.Error("error deleting function", zap.Error(err))
 			}
-
-			minScale := int32(fn.Spec.InvokeStrategy.ExecutionStrategy.MinScale)
-
-			// do nothing if the current replicas is already lower than minScale
-			if *currentDeploy.Spec.Replicas <= minScale {
-				return
-			}
-
-			err = wasm.scaleDeployment(ctx, deployObj.Namespace, deployObj.Name, minScale)
-			if err != nil {
-				wasm.logger.Error("error scaling down function deployment", zap.Error(err), zap.String("function", fsvc.Function.Name))
-			}
+			log.Debug("end function delete handler")
 		}()
 	}
 }
