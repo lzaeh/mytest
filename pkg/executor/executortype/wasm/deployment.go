@@ -37,7 +37,6 @@ func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, d
 	if err != nil {
 		return nil, err
 	}
-    wasm.logger.Info("******k8s创建deployment")
 	existingDepl, err := wasm.kubernetesClient.AppsV1().Deployments(deployNamespace).Get(ctx, deployName, metav1.GetOptions{})
 	if err != nil && !k8s_err.IsNotFound(err) {
 		return nil, err
@@ -45,6 +44,7 @@ func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, d
 
 	// Create new deployment if one does not previously exist
 	if k8s_err.IsNotFound(err) {
+		wasm.logger.Info("******k8s创建deployment")
 		depl, err := wasm.kubernetesClient.AppsV1().Deployments(deployNamespace).Create(ctx, deployment, metav1.CreateOptions{})
 		if err != nil {
 			if k8s_err.IsAlreadyExists(err) {
@@ -61,9 +61,9 @@ func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, d
 		}
 		otelUtils.SpanTrackEvent(ctx, "deploymentCreated", otelUtils.GetAttributesForDeployment(depl)...)
 		// 一下在实际工作中要使用！！！
-		if minScale > 0 {
-			depl, err = wasm.waitForDeploy(ctx, depl, minScale, specializationTimeout)
-		}
+		// if minScale > 0 {
+		// 	depl, err = wasm.waitForDeploy(ctx, depl, minScale, specializationTimeout)
+		// }
 		return depl, err
 	}
 
