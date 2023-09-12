@@ -156,6 +156,11 @@ func (executor *Executor) getServiceForFunction(ctx context.Context, fn *fv1.Fun
 	if resp.err != nil {
 		return "", resp.err
 	}
+	if fn.Spec.InvokeStrategy.ExecutionStrategy.ExecutorType==fv1.ExecutorTypeWasm{
+		address := fmt.Sprintf("%v,%v", resp.funcSvc.Address, resp.funcSvc.PodIpPort)
+		executor.logger.Info("getting wasm address like serviceaddres,podip:port", zap.String("Address", address))
+		return address,resp.err
+	}
 	return resp.funcSvc.Address, resp.err
 }
 

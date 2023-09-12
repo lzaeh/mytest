@@ -60,6 +60,7 @@ type (
 		KubernetesObjects []apiv1.ObjectReference // Kubernetes Objects (within the function namespace)
 		Executor          fv1.ExecutorType
 		CPULimit          resource.Quantity
+		PodIpPort         string
 
 		Ctime time.Time
 		Atime time.Time

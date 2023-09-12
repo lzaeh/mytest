@@ -16,11 +16,12 @@ import (
 	fv1 "github.com/fission/fission/pkg/apis/core/v1"
 	"github.com/fission/fission/pkg/executor/util"
 	otelUtils "github.com/fission/fission/pkg/utils/otel"
+	"k8s.io/apimachinery/pkg/watch"
 )
 
-func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, deployName string, deployLabels map[string]string, deployAnnotations map[string]string, deployNamespace string) (*appsv1.Deployment, error) {
+func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, deployName string, deployLabels map[string]string, deployAnnotations map[string]string, deployNamespace string) (*appsv1.Deployment, string,error) {
 	logger := otelUtils.LoggerWithTraceID(ctx, wasm.logger)
-
+    var podIP string
 	// The specializationTimeout here refers to the creation of the pod and not the loading of function
 	// as in other executors.
 	specializationTimeout := fn.Spec.InvokeStrategy.ExecutionStrategy.SpecializationTimeout
@@ -35,11 +36,11 @@ func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, d
 
 	deployment, err := wasm.getDeploymentSpec(ctx, fn, &minScale, deployName, deployNamespace, deployLabels, deployAnnotations)
 	if err != nil {
-		return nil, err
+		return nil, podIP,err
 	}
 	existingDepl, err := wasm.kubernetesClient.AppsV1().Deployments(deployNamespace).Get(ctx, deployName, metav1.GetOptions{})
 	if err != nil && !k8s_err.IsNotFound(err) {
-		return nil, err
+		return nil, podIP,err
 	}
 
 	// Create new deployment if one does not previously exist
@@ -56,7 +57,7 @@ func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, d
 					zap.String("function", fn.ObjectMeta.Name),
 					zap.String("deployment_name", deployName),
 					zap.String("deployment_namespace", deployNamespace))
-				return nil, err
+				return nil, podIP,err
 			}
 		}
 		otelUtils.SpanTrackEvent(ctx, "deploymentCreated", otelUtils.GetAttributesForDeployment(depl)...)
@@ -64,7 +65,13 @@ func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, d
 		// if minScale > 0 {
 		// 	depl, err = wasm.waitForDeploy(ctx, depl, minScale, specializationTimeout)
 		// }
-		return depl, err
+		podIP,err=wasm.waitForPodIP(ctx,depl)
+		if err!=nil{
+			wasm.logger.Error("error getting podIP ", zap.Error(err), zap.String("podIP", podIP))
+			return depl,podIP, err
+		}
+
+		return depl, podIP,err
 	}
 
 	// Try to adopt orphan deployment created by the old executor.
@@ -81,24 +88,24 @@ func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, d
 		if err != nil {
 			logger.Warn("error adopting cn", zap.Error(err),
 				zap.String("cn", deployName), zap.String("ns", deployNamespace))
-			return nil, err
+			return nil, podIP,err
 		}
 		// In this case, we just return without waiting for it for fast bootstraping.
-		return existingDepl, nil
+		return existingDepl, podIP,nil
 	}
 
 	if *existingDepl.Spec.Replicas < minScale {
 		err = wasm.scaleDeployment(ctx, existingDepl.Namespace, existingDepl.Name, minScale)
 		if err != nil {
 			logger.Error("error scaling up function deployment", zap.Error(err), zap.String("function", fn.ObjectMeta.Name))
-			return nil, err
+			return nil, podIP,err
 		}
 	}
 	if existingDepl.Status.AvailableReplicas < minScale {
 		existingDepl, err = wasm.waitForDeploy(ctx, existingDepl, minScale, specializationTimeout)
 	}
 
-	return existingDepl, err
+	return existingDepl, podIP,err
 }
 
 func (wasm *Wasm) updateDeployment(ctx context.Context, deployment *appsv1.Deployment, ns string) error {
@@ -299,4 +306,33 @@ func (wasm *Wasm) scaleDeployment(ctx context.Context, deplNS string, deplName s
 		},
 	}, metav1.UpdateOptions{})
 	return err
+}
+
+
+func (wasm *Wasm) waitForPodIP(ctx context.Context, depl *appsv1.Deployment) (podIP string, err error) {
+	// 监听Pod变化
+	watcher, err := wasm.kubernetesClient.CoreV1().Pods(depl.Namespace).Watch(context.TODO(), metav1.ListOptions{
+		LabelSelector: metav1.FormatLabelSelector(depl.Spec.Selector),
+	})
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// 处理Pod事件
+	for event := range watcher.ResultChan() {
+		pod, ok := event.Object.(*apiv1.Pod)
+		if !ok {
+			continue
+		}
+ 
+		podIP := pod.Status.PodIP
+        
+		if event.Type==watch.Added{
+		  wasm.logger.Info("************成功拿到PodIP**************",zap.String("PodIP", podIP))
+          return podIP,nil
+		}
+
+	}
+   
+	return "",err
 }

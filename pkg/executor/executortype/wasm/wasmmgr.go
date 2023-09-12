@@ -350,7 +350,7 @@ func (wasm *Wasm) deleteFunction(ctx context.Context, fn *fv1.Function) error {
 	return err
 }
 
-func (wasm *Wasm) fnCreate(ctx context.Context, fn *fv1.Function) (*fscache.FuncSvc, error) {
+func (wasm *Wasm)  fnCreate(ctx context.Context, fn *fv1.Function) (*fscache.FuncSvc, error) {
 	cleanupFunc := func(ns string, name string) {
 		err := wasm.cleanupWasm(ctx, ns, name)
 		if err != nil {
@@ -382,11 +382,20 @@ func (wasm *Wasm) fnCreate(ctx context.Context, fn *fv1.Function) (*fscache.Func
 	}
 	svcAddress := fmt.Sprintf("%v.%v", svc.Name, svc.Namespace)
 	
-	depl, err := wasm.createOrGetDeployment(ctx, fn, objName, deployLabels, deployAnnotations, ns)
+	depl, podIP,err := wasm.createOrGetDeployment(ctx, fn, objName, deployLabels, deployAnnotations, ns)
 	if err != nil {
 		wasm.logger.Error("error creating deployment", zap.Error(err), zap.String("deployment", objName))
 		go cleanupFunc(ns, objName)
 		return nil, errors.Wrapf(err, "error creating deployment %v", objName)
+	}
+
+	podAddress := ""
+    if podIP != "" && len(depl.Spec.Template.Spec.Containers) > 0 && len(depl.Spec.Template.Spec.Containers[0].Ports) > 0 {
+       containerPort := depl.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort
+	   podAddress =  fmt.Sprintf("%v:%v", podIP, strconv.Itoa(int(containerPort)))
+	   wasm.logger.Info("******got podAddress****** ",zap.String("podAddress", podAddress))
+    }else{
+	   wasm.logger.Error("error getting podAddress ", zap.Error(err), zap.String("podIP", podIP))
 	}
 
 	// hpa, err := wasm.hpaops.CreateOrGetHpa(ctx, objName, &fn.Spec.InvokeStrategy.ExecutionStrategy, depl, deployLabels, deployAnnotations)
@@ -430,6 +439,7 @@ func (wasm *Wasm) fnCreate(ctx context.Context, fn *fv1.Function) (*fscache.Func
 		Address:           svcAddress,
 		KubernetesObjects: kubeObjRefs,
 		Executor:          fv1.ExecutorTypeWasm,
+		PodIpPort:         podAddress,
 	}
 
 	_, err = wasm.fsCache.Add(*fsvc)

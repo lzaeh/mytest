@@ -266,7 +266,6 @@ func (roundTripper *RetryingRoundTripper) RoundTrip(req *http.Request) (*http.Re
 			// this service url comes from executor response
 			req.URL.Scheme = roundTripper.serviceURL.Scheme
 			req.URL.Host = roundTripper.serviceURL.Host
-
 			// With addition of routing support from functions if function supports routing,
 			// 1. we trim prefix url and forward request
 			// 2. otherwise we just keep default request to root path
@@ -300,6 +299,8 @@ func (roundTripper *RetryingRoundTripper) RoundTrip(req *http.Request) (*http.Re
 			// or request will be blocked in some situations
 			// (e.g. istio-proxy)
 			req.Host = roundTripper.serviceURL.Host
+			// req.Host =  podAddress.Host
+			logger.Info("+++++********service url is ", zap.String("serviceURL", req.URL.Host))
 		}
 
 		// over-riding default settings.
@@ -637,7 +638,7 @@ func (fh functionHandler) removeServiceEntryFromCache() {
 	}
 }
 
-func (fh functionHandler) getServiceEntryFromExecutor(ctx context.Context) (serviceUrl *url.URL, err error) {
+func (fh functionHandler) getServiceEntryFromExecutor(ctx context.Context) (serviceUrl *url.URL, PodUrl *url.URL,err error) {
 	logger := otelUtils.LoggerWithTraceID(ctx, fh.logger)
 	// send a request to executor to specialize a new pod
 	fh.logger.Debug("function timeout specified", zap.Int("timeout", fh.function.Spec.FunctionTimeout))
@@ -652,7 +653,7 @@ func (fh functionHandler) getServiceEntryFromExecutor(ctx context.Context) (serv
 		fContext = ctx
 	}
 
-	service, err := fh.executor.GetServiceForFunction(fContext, fh.function)
+	address, err := fh.executor.GetServiceForFunction(fContext, fh.function)
 	if err != nil {
 		statusCode, errMsg := ferror.GetHTTPError(err)
 		logger.Error("error from GetServiceForFunction",
@@ -660,31 +661,48 @@ func (fh functionHandler) getServiceEntryFromExecutor(ctx context.Context) (serv
 			zap.String("error_message", errMsg),
 			zap.Any("function", fh.function),
 			zap.Int("status_code", statusCode))
-		return nil, err
+		return nil, nil,err
 	}
 	// parse the address into url
-	svcURL, err := url.Parse(fmt.Sprintf("http://%v", service))
+    result := strings.Split(address, ",")
+	if len(result)<1{
+		logger.Error("error getting service url, len of addres should equal 2",
+			zap.Error(err))
+		return nil, nil,err
+	}
+	svcURL, err := url.Parse(fmt.Sprintf("http://%v", result[0]))
 	if err != nil {
 		logger.Error("error parsing service url",
 			zap.Error(err),
 			zap.String("service_url", svcURL.String()))
-		return nil, err
+		return nil, nil,err
 	}
-	return svcURL, err
+	if len(result)==2{
+		PodUrl,err= url.Parse(fmt.Sprintf("http://%v", result[1]))
+		if err != nil {
+			logger.Error("error parsing Pod url",
+				zap.Error(err),
+				zap.String("service_url", PodUrl.String()))
+			return nil, nil,err
+		}
+		return svcURL, PodUrl,err
+	}
+	return svcURL, svcURL,err
 }
 
 // getServiceEntryFromExecutor returns service url entry returns from executor
-func (fh functionHandler) getServiceEntry(ctx context.Context) (svcURL *url.URL, cacheHit bool, err error) {
+func (fh functionHandler) getServiceEntry(ctx context.Context) (svcURL *url.URL,cacheHit bool, err error) {
+	var svc *url.URL
 	if fh.function.Spec.InvokeStrategy.ExecutionStrategy.ExecutorType == fv1.ExecutorTypePoolmgr {
-		svcURL, err = fh.getServiceEntryFromExecutor(ctx)
-		return svcURL, false, err
+		svcURL,_,err = fh.getServiceEntryFromExecutor(ctx)
+		return svcURL,false, err
 	}
 	// Check if service URL present in cache
 	svcURL, err = fh.getServiceEntryFromCache()
 	if err == nil && svcURL != nil {
-		return svcURL, true, nil
+		return svcURL,  true, nil
 	} else if err != nil {
-		return nil, false, err
+		return nil,  false, err
 	}
 
 	fnMeta := &fh.function.ObjectMeta
@@ -698,11 +716,11 @@ func (fh functionHandler) getServiceEntry(ctx context.Context) (svcURL *url.URL,
 				}
 				return svcEntryRecord{svcURL: svcURL, cacheHit: true}, err
 			}
-			svcURL, err = fh.getServiceEntryFromExecutor(ctx)
+			svc, svcURL,err = fh.getServiceEntryFromExecutor(ctx)
 			if err != nil {
 				return nil, err
 			}
-			fh.addServiceEntryToCache(svcURL)
+			fh.addServiceEntryToCache(svc)
 			return svcEntryRecord{
 				svcURL:   svcURL,
 				cacheHit: false,
