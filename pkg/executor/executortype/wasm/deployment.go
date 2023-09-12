@@ -327,7 +327,7 @@ func (wasm *Wasm) waitForPodIP(ctx context.Context, depl *appsv1.Deployment) (po
  
 		podIP := pod.Status.PodIP
         
-		if event.Type==watch.Added{
+		if event.Type==watch.Added && podIP!=""{
 		  wasm.logger.Info("************成功拿到PodIP**************",zap.String("PodIP", podIP))
           return podIP,nil
 		}

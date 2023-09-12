@@ -677,7 +677,7 @@ func (fh functionHandler) getServiceEntryFromExecutor(ctx context.Context) (serv
 			zap.String("service_url", svcURL.String()))
 		return nil, nil,err
 	}
-	if len(result)==2{
+	if len(result)==2&&result[1]!=""{
 		PodUrl,err= url.Parse(fmt.Sprintf("http://%v", result[1]))
 		if err != nil {
 			logger.Error("error parsing Pod url",
