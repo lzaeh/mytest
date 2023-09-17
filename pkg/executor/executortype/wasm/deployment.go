@@ -15,6 +15,7 @@ import (
 
 	fv1 "github.com/fission/fission/pkg/apis/core/v1"
 	"github.com/fission/fission/pkg/executor/util"
+	"github.com/fission/fission/pkg/utils"
 	otelUtils "github.com/fission/fission/pkg/utils/otel"
 	"k8s.io/apimachinery/pkg/watch"
 )
@@ -315,24 +316,51 @@ func (wasm *Wasm) waitForPodIP(ctx context.Context, depl *appsv1.Deployment) (po
 		LabelSelector: metav1.FormatLabelSelector(depl.Spec.Selector),
 	})
 	if err != nil {
-		panic(err.Error())
+		if utils.IsNetworkError(err) {
+			wasm.logger.Error("encountered network error, retrying later", zap.Error(err))
+			time.Sleep(5 * time.Second)
+		}
+		wasm.logger.Fatal("error watching pod list", zap.Error(err))
 	}
 
-	// 处理Pod事件
-	for event := range watcher.ResultChan() {
-		pod, ok := event.Object.(*apiv1.Pod)
+	// 监听Pod事件
+	for {
+		pod, ok  := <-watcher.ResultChan() 
+		// := event.Object.(*apiv1.Pod)
 		if !ok {
 			continue
 		}
- 
-		podIP := pod.Status.PodIP
-        
-		if event.Type==watch.Added && podIP!=""{
-		  wasm.logger.Info("************成功拿到PodIP**************",zap.String("PodIP", podIP))
-          return podIP,nil
+		
+		if pod.Type==watch.Added {
+			wasm.logger.Info("************有新增pod事件**************")
+			podIP,err=wasm.sync(depl)
+			return podIP,err
 		}
 
 	}
-   
-	return "",err
+	
+}
+
+func (wasm *Wasm) sync(depl *appsv1.Deployment)(string,error){
+	maxRetries := 30
+	for i := 0; i < maxRetries; i++ {
+		podList, err := wasm.kubernetesClient.CoreV1().Pods(depl.Namespace).List(context.TODO(), metav1.ListOptions{
+			LabelSelector: metav1.FormatLabelSelector(depl.Spec.Selector),})
+		if err != nil {
+			wasm.logger.Fatal("error syncing new pod resources", zap.Error(err))
+			return "",err
+		}
+
+		// Create environment builders for all environments
+		for i := range podList.Items {
+			pod := podList.Items[i]
+			if pod.Status.PodIP!= ""{
+				wasm.logger.Info("***********成功拿到PodIP**********",zap.String("PodIP",pod.Status.PodIP))
+				return pod.Status.PodIP,nil
+			}
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+  return "",nil
+
 }
