@@ -388,6 +388,7 @@ func (wasm *Wasm) waitForPodIP(ctx context.Context,uid string) (podIP string, er
 		if podIP,err=wasm.fpmap.lookup(uid);err!=nil{
 			continue
 		}else{
+			wasm.logger.Info("******getServiceForFunction拿到PODIP可以返回*********")
 			return podIP,err
 		}
 		
