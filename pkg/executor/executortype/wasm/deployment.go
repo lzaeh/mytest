@@ -392,6 +392,6 @@ func (wasm *Wasm) waitForPodIP(ctx context.Context,uid string) (podIP string, er
 func (wasm *Wasm) getStoreURL(uid string)(url string){
 	
 	Url := fmt.Sprintf("http://43.153.27.229:32088/v2/storePodIP/%v",uid)
-	wasm.logger.Info("***********StoreURL构建成功**********",zap.String("StoreUrl",Url))
+	wasm.logger.Info("***********StoreURL构建成功!**********",zap.String("StoreUrl",Url))
     return Url
 }
