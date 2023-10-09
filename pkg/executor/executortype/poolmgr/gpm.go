@@ -753,3 +753,7 @@ func (gpm *GenericPoolManager) NoActiveConnectionEventChecker(kubeClient kuberne
 	informer.Run(stopper)
 
 }
+
+func (gpm *GenericPoolManager) StorePodIP(ctx context.Context, funcUID string,PodIP string) error {
+	return nil
+}

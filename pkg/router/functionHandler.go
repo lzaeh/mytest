@@ -624,10 +624,33 @@ func (fh functionHandler) getServiceEntryFromCache() (serviceUrl *url.URL, err e
 	}
 	return serviceUrl, nil
 }
+// getPodIPEntryFromCache returns pod ip url entry returns from cache
+func (fh functionHandler) getPodIPEntryFromCache() (podUrl *url.URL, err error) {
+	// cache lookup to get serviceUrl
+	podUrl, err = fh.fmap.lookuppodip(string(fh.function.UID))
+	if err != nil {
+		var errMsg string
+
+		e, ok := err.(ferror.Error)
+		if !ok {
+			errMsg = fmt.Sprintf("Unknown error when looking up service entry: %v", err)
+		} else {
+			// Ignore ErrorNotFound error here, it's an expected error,
+			// roundTripper will try to get service url later.
+			if e.Code == ferror.ErrorNotFound {
+				return nil, nil
+			}
+			errMsg = fmt.Sprintf("Error getting function %v;s pod ip service entry from cache: %v", fh.function.ObjectMeta.Name, err)
+		}
+		return nil, ferror.MakeError(http.StatusInternalServerError, errMsg)
+	}
+	return podUrl, nil
+}
 
 // addServiceEntryToCache add service url entry to cache
-func (fh functionHandler) addServiceEntryToCache(serviceURL *url.URL) {
+func (fh functionHandler) addServiceEntryToCache(serviceURL *url.URL,podURL *url.URL) {
 	fh.fmap.assign(&fh.function.ObjectMeta, serviceURL)
+	fh.fmap.assignpodip(string(fh.function.UID), podURL)
 }
 
 // removeServiceEntryFromCache removes service url entry from cache
@@ -635,6 +658,10 @@ func (fh functionHandler) removeServiceEntryFromCache() {
 	err := fh.fmap.remove(&fh.function.ObjectMeta)
 	if err != nil {
 		fh.logger.Error("Error removing key:", zap.Error(err))
+	}
+	err = fh.fmap.removepodip(string(fh.function.UID))
+	if err != nil {
+		fh.logger.Error("Error removing pod ip key:", zap.Error(err))
 	}
 }
 
@@ -710,7 +737,7 @@ func (fh functionHandler) getServiceEntry(ctx context.Context) (svcURL *url.URL,
 		crd.CacheKey(fnMeta),
 		func(firstToTheLock bool) (interface{}, error) {
 			if !firstToTheLock {
-				svcURL, err := fh.getServiceEntryFromCache()
+				svcURL, err := fh.getPodIPEntryFromCache()
 				if err != nil {
 					return nil, err
 				}
@@ -720,7 +747,7 @@ func (fh functionHandler) getServiceEntry(ctx context.Context) (svcURL *url.URL,
 			if err != nil {
 				return nil, err
 			}
-			fh.addServiceEntryToCache(svc)
+			fh.addServiceEntryToCache(svc,svcURL)
 			return svcEntryRecord{
 				svcURL:   svcURL,
 				cacheHit: false,

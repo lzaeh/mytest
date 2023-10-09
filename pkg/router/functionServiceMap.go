@@ -29,7 +29,8 @@ import (
 type (
 	functionServiceMap struct {
 		logger *zap.Logger
-		cache  *cache.Cache // map[metadataKey]*url.URL
+		cache  *cache.Cache      // map[metadataKey]*url.URL
+	    podIPcache  *cache.Cache // map[string functionuid]string
 	}
 
 	// metav1.ObjectMeta is not hashable, so we make a hashable copy
@@ -45,6 +46,7 @@ func makeFunctionServiceMap(logger *zap.Logger, expiry time.Duration) *functionS
 	return &functionServiceMap{
 		logger: logger.Named("function_service_map"),
 		cache:  cache.MakeCache(expiry, 0),
+		podIPcache:cache.MakeCache(expiry, 0),
 	}
 }
 
@@ -81,4 +83,31 @@ func (fmap *functionServiceMap) assign(f *metav1.ObjectMeta, serviceURL *url.URL
 func (fmap *functionServiceMap) remove(f *metav1.ObjectMeta) error {
 	mk := keyFromMetadata(f)
 	return fmap.cache.Delete(*mk)
+}
+
+
+func (fmap *functionServiceMap) lookuppodip(fuid string) (*url.URL, error) {
+	// mk := keyFromMetadata(f)
+	item, err := fmap.podIPcache.Get(fuid)
+	if err != nil {
+		return nil, err
+	}
+	u := item.(*url.URL)
+	return u, nil
+}
+
+func (fmap *functionServiceMap) assignpodip(fuid string, PodIP *url.URL) {
+	// mk := keyFromMetadata(f)
+	old, err := fmap.podIPcache.Set(fuid, PodIP)
+	if err != nil {
+		if *PodIP == *(old.(*url.URL)) {
+			return
+		}
+		fmap.logger.Error("error caching pod ip for function with a different value", zap.Error(err))
+		// ignore error
+	}
+}
+
+func (fmap *functionServiceMap) removepodip(fuid string) error {
+	return fmap.podIPcache.Delete(fuid)
 }

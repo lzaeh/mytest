@@ -15,9 +15,9 @@ import (
 
 	fv1 "github.com/fission/fission/pkg/apis/core/v1"
 	"github.com/fission/fission/pkg/executor/util"
-	"github.com/fission/fission/pkg/utils"
+	// "github.com/fission/fission/pkg/utils"
 	otelUtils "github.com/fission/fission/pkg/utils/otel"
-	"k8s.io/apimachinery/pkg/watch"
+	// "k8s.io/apimachinery/pkg/watch"
 )
 
 func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, deployName string, deployLabels map[string]string, deployAnnotations map[string]string, deployNamespace string) (*appsv1.Deployment, string,error) {
@@ -66,7 +66,7 @@ func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, d
 		// if minScale > 0 {
 		// 	depl, err = wasm.waitForDeploy(ctx, depl, minScale, specializationTimeout)
 		// }
-		podIP,err=wasm.waitForPodIP(ctx,depl)
+		podIP,err=wasm.waitForPodIP(ctx,string(fn.UID))
 		if err!=nil{
 			wasm.logger.Error("error getting podIP ", zap.Error(err), zap.String("podIP", podIP))
 			return depl,podIP, err
@@ -310,57 +310,88 @@ func (wasm *Wasm) scaleDeployment(ctx context.Context, deplNS string, deplName s
 }
 
 
-func (wasm *Wasm) waitForPodIP(ctx context.Context, depl *appsv1.Deployment) (podIP string, err error) {
-	// 监听Pod变化
-	watcher, err := wasm.kubernetesClient.CoreV1().Pods(depl.Namespace).Watch(context.TODO(), metav1.ListOptions{
-		LabelSelector: metav1.FormatLabelSelector(depl.Spec.Selector),
-	})
-	if err != nil {
-		if utils.IsNetworkError(err) {
-			wasm.logger.Error("encountered network error, retrying later", zap.Error(err))
-			time.Sleep(5 * time.Second)
-		}
-		wasm.logger.Fatal("error watching pod list", zap.Error(err))
-	}
+// func (wasm *Wasm) waitForPodIP(ctx context.Context, depl *appsv1.Deployment) (podIP string, err error) {
+// 	// 监听Pod变化
+// 	watcher, err := wasm.kubernetesClient.CoreV1().Pods(depl.Namespace).Watch(context.TODO(), metav1.ListOptions{
+// 		LabelSelector: metav1.FormatLabelSelector(depl.Spec.Selector),
+// 	})
+// 	if err != nil {
+// 		if utils.IsNetworkError(err) {
+// 			wasm.logger.Error("encountered network error, retrying later", zap.Error(err))
+// 			time.Sleep(5 * time.Second)
+// 		}
+// 		wasm.logger.Fatal("error watching pod list", zap.Error(err))
+// 	}
 
-	// 监听Pod事件
-	for {
-		pod, ok  := <-watcher.ResultChan() 
-		// := event.Object.(*apiv1.Pod)
-		if !ok {
-			continue
-		}
+// 	// 监听Pod事件
+// 	for {
+// 		pod, ok  := <-watcher.ResultChan() 
+// 		// := event.Object.(*apiv1.Pod)
+// 		if !ok {
+// 			continue
+// 		}
 		
-		if pod.Type==watch.Added {
-			wasm.logger.Info("************有新增pod事件**************")
-			podIP,err=wasm.sync(depl)
-			return podIP,err
-		}
+// 		if pod.Type==watch.Added {
+// 			wasm.logger.Info("************有新增pod事件**************")
+// 			podIP,err=wasm.sync(depl)
+// 			return podIP,err
+// 		}
 
-	}
+// 	}
 	
+// }
+
+// func (wasm *Wasm) sync(depl *appsv1.Deployment)(string,error){
+// 	maxRetries := 30
+// 	for i := 0; i < maxRetries; i++ {
+// 		podList, err := wasm.kubernetesClient.CoreV1().Pods(depl.Namespace).List(context.TODO(), metav1.ListOptions{
+// 			LabelSelector: metav1.FormatLabelSelector(depl.Spec.Selector),})
+// 		if err != nil {
+// 			wasm.logger.Fatal("error syncing new pod resources", zap.Error(err))
+// 			return "",err
+// 		}
+
+// 		// Create environment builders for all environments
+// 		for i := range podList.Items {
+// 			pod := podList.Items[i]
+// 			if pod.Status.PodIP!= ""{
+// 				wasm.logger.Info("***********成功拿到PodIP**********",zap.String("PodIP",pod.Status.PodIP))
+// 				return pod.Status.PodIP,nil
+// 			}
+// 		}
+// 		time.Sleep(50 * time.Millisecond)
+// 	}
+//   return "",nil
+
+// }
+
+func (wasm *Wasm) waitForPodIP(ctx context.Context,uid string) (podIP string, err error) {
+    //异步等待通道中获取podip的消息
+	select {
+		case data:= <-wasm.fnchannel[uid]:
+			//从本地podip的cache中取podip
+			if data==true{
+				podIP,err=wasm.fpmap.lookup(uid)
+				if err!=nil{
+					wasm.logger.Fatal("error getting podip from cache", zap.Error(err))
+				}
+				wasm.logger.Info("***********成功拿到PodIP**********",zap.String("PodIP",podIP))
+				close(wasm.fnchannel[uid])
+				return podIP,err
+			}
+		case <-time.After(300 * time.Millisecond):
+			wasm.logger.Fatal("********超时300ms,未拿到podIP*******")
+			return "",nil
+	}
+
+   wasm.logger.Info("***********跳过select,没有到PodIP**********")
+   return "",nil
 }
 
-func (wasm *Wasm) sync(depl *appsv1.Deployment)(string,error){
-	maxRetries := 30
-	for i := 0; i < maxRetries; i++ {
-		podList, err := wasm.kubernetesClient.CoreV1().Pods(depl.Namespace).List(context.TODO(), metav1.ListOptions{
-			LabelSelector: metav1.FormatLabelSelector(depl.Spec.Selector),})
-		if err != nil {
-			wasm.logger.Fatal("error syncing new pod resources", zap.Error(err))
-			return "",err
-		}
 
-		// Create environment builders for all environments
-		for i := range podList.Items {
-			pod := podList.Items[i]
-			if pod.Status.PodIP!= ""{
-				wasm.logger.Info("***********成功拿到PodIP**********",zap.String("PodIP",pod.Status.PodIP))
-				return pod.Status.PodIP,nil
-			}
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-  return "",nil
-
+func (wasm *Wasm) getStoreURL(uid string)(url string){
+	
+	Url := fmt.Sprintf("http://43.153.27.229:32088/v2/storePodIP/%v",uid)
+	wasm.logger.Info("***********StoreURL构建成功**********",zap.String("StoreUrl",Url))
+    return Url
 }

@@ -884,3 +884,8 @@ func (deploy *NewDeploy) scaleDeployment(ctx context.Context, deplNS string, dep
 	}, metav1.UpdateOptions{})
 	return err
 }
+
+
+func (deploy *NewDeploy) StorePodIP(ctx context.Context, funcUID string,PodIP string) error {
+	return nil
+}

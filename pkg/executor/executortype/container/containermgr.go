@@ -781,3 +781,7 @@ func getDeploymentObj(kubeobjs []apiv1.ObjectReference) *apiv1.ObjectReference {
 	}
 	return nil
 }
+
+func (caaf *Container) StorePodIP(ctx context.Context, funcUID string,PodIP string) error {
+	return nil
+}

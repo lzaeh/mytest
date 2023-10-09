@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-redis/redis"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -52,6 +53,9 @@ type (
 
 		kubernetesClient kubernetes.Interface
 		fissionClient    versioned.Interface
+		redisClient      *redis.Client
+		fpmap            *functionPodIPMap
+		fnchannel        map[string]chan bool
 		instanceID       string
 		// fetcherConfig    *fetcherConfig.Config
 
@@ -95,12 +99,22 @@ func MakeWasm(
 		}
 		enableIstio = istio
 	}
+    // 创建 Redis 客户端
+    redisCli:= redis.NewClient(&redis.Options{
+		Addr:     "redis-service.fission:6379", // Redis 服务器地址和端口
+		Password: "123456",              // Redis 服务器密码（如果有的话）
+		DB:       0,                     // Redis 数据库索引
+	})
+	
+    PodIPMap := makeFunctionServiceMap(logger, time.Minute)
 
 	wasm := &Wasm{
 		logger: logger.Named("Wasm"),
 
 		fissionClient:    fissionClient,
 		kubernetesClient: kubernetesClient,
+		redisClient:      redisCli,
+		fpmap:            PodIPMap,
 		instanceID:       instanceID,
 
 		namespace: namespace,
@@ -350,7 +364,7 @@ func (wasm *Wasm) deleteFunction(ctx context.Context, fn *fv1.Function) error {
 	return err
 }
 
-func (wasm *Wasm)  fnCreate(ctx context.Context, fn *fv1.Function) (*fscache.FuncSvc, error) {
+func (wasm *Wasm) fnCreate(ctx context.Context, fn *fv1.Function) (*fscache.FuncSvc, error) {
 	cleanupFunc := func(ns string, name string) {
 		err := wasm.cleanupWasm(ctx, ns, name)
 		if err != nil {
@@ -368,7 +382,8 @@ func (wasm *Wasm)  fnCreate(ctx context.Context, fn *fv1.Function) (*fscache.Fun
 	if fn.ObjectMeta.Namespace != metav1.NamespaceDefault {
 		ns = fn.ObjectMeta.Namespace
 	}
-
+    ch:=make(chan bool)
+	wasm.fnchannel[string(fn.UID)]=ch
 	// Envoy(istio-proxy) returns 404 directly before istio pilot
 	// propagates latest Envoy-specific configuration.
 	// Since Wasm waits for pods of deployment to be ready,
@@ -640,7 +655,8 @@ func (wasm *Wasm) fnDelete(ctx context.Context, fn *fv1.Function) error {
 		multierr = multierror.Append(multierr,
 			errors.Wrapf(err, "error deleting the function from cache"))
 	}
-
+    //删除function有关的PodIP
+	wasm.fpmap.remove(string(fn.UID))
 	// to support backward compatibility, if the function was created in default ns, we fall back to creating the
 	// deployment of the function in fission-function ns, so cleaning up resources there
 	ns := wasm.namespace
@@ -692,6 +708,8 @@ func (wasm *Wasm) getDeployAnnotations(fnMeta metav1.ObjectMeta) map[string]stri
 	deployAnnotations := maps.CopyStringMap(fnMeta.Annotations)
 	deployAnnotations[fv1.EXECUTOR_INSTANCEID_LABEL] = wasm.instanceID
 	deployAnnotations[fv1.FUNCTION_RESOURCE_VERSION] = fnMeta.ResourceVersion
+	Url:=wasm.getStoreURL(string(fnMeta.UID))
+	deployAnnotations["fission-url"] = Url
 	return deployAnnotations
 }
 
@@ -788,3 +806,33 @@ func getDeploymentObj(kubeobjs []apiv1.ObjectReference) *apiv1.ObjectReference {
 	}
 	return nil
 }
+
+
+// TapService makes a TouchByAddress request to the cache.
+func (wasm *Wasm) StorePodIP(ctx context.Context, funcUID string,PodIP string) error {
+    
+	//将podIP存储在本地，删除之前存在的
+	 if _,err:=wasm.fpmap.lookup(funcUID);err==nil{
+		wasm.fpmap.remove(funcUID)
+	}
+	
+	//在存入新的podip
+	wasm.fpmap.assign(funcUID,PodIP)
+
+	wasm.fnchannel[funcUID]<-true
+    
+	wasm.logger.Info("******成功同步podip**********", zap.String("podip:", PodIP))
+
+	
+	return nil
+}
+
+
+// func (wasm *Wasm) syncPodIP(ctx context.Context, funcUID string,PodIP string){
+//     //删除之前存在的
+// 	if _,err:=wasm.fpmap.lookup(funcUID);err==nil{
+// 		wasm.fpmap.remove(funcUID)
+// 	}
+    
+	
+// }

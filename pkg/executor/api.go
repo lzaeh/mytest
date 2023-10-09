@@ -262,6 +262,7 @@ func (executor *Executor) GetHandler() http.Handler {
 	r.HandleFunc("/v2/tapService", executor.tapService).Methods("POST") // for backward compatibility
 	r.HandleFunc("/v2/tapServices", executor.tapServices).Methods("POST")
 	r.HandleFunc("/healthz", executor.healthHandler).Methods("GET")
+	r.HandleFunc("/v2/storePodIP/{functionUID}", executor.storePodIP).Methods("POST")//给下层提供存储podIP的接口
 	r.HandleFunc("/v2/unTapService", executor.unTapService).Methods("POST")
 	return r
 }
@@ -271,4 +272,34 @@ func (executor *Executor) Serve(ctx context.Context, port int) {
 	handler := otelUtils.GetHandlerWithOTEL(executor.GetHandler(), "fission-executor", otelUtils.UrlsToIgnore("/healthz"))
 	httpserver.StartServer(ctx, executor.logger, "executor", fmt.Sprintf("%d", port), handler)
 
+}
+
+func (executor *Executor) storePodIP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	logger := otelUtils.LoggerWithTraceID(ctx, executor.logger)
+	body, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		http.Error(w, "Failed to read request", http.StatusInternalServerError)
+		return
+	}
+    logger.Info("*****Wasm成功拿到PodIP**********", zap.String("PodIP:",string(body)))
+	vars := mux.Vars(r)
+	UID := vars["functionUID"]
+   
+  
+    et:= executor.executorTypes[fv1.ExecutorTypeWasm]
+	err =et.StorePodIP(ctx,UID,string(body))
+	if err != nil {
+		logger.Error("error storing PodIP for function",zap.Error(err))
+		http.Error(w, "Failed to storing PodIP request", http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+
+func (executor *Executor) extractQueryParamFromRequest(r *http.Request, queryParam string) string {
+	values := r.URL.Query()
+	return values.Get(queryParam)
 }

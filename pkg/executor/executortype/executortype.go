@@ -63,4 +63,7 @@ type ExecutorType interface {
 
 	// CleanupOldExecutorObjects cleans up resources created by old executor instances
 	CleanupOldExecutorObjects(context.Context)
+
+	// StorePodIP  provides ways for basement to store function PODIP when it's first time to use
+	StorePodIP(ctx context.Context, funcUID string,PodIP string) error
 }
