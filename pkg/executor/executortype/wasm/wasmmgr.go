@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -53,7 +52,6 @@ type (
 
 		kubernetesClient kubernetes.Interface
 		fissionClient    versioned.Interface
-		redisClient      *redis.Client
 		fpmap            *functionPodIPMap
 		fnchannel        map[string]chan bool
 		instanceID       string
@@ -99,12 +97,7 @@ func MakeWasm(
 		}
 		enableIstio = istio
 	}
-    // 创建 Redis 客户端
-    redisCli:= redis.NewClient(&redis.Options{
-		Addr:     "redis-service.fission:6379", // Redis 服务器地址和端口
-		Password: "123456",              // Redis 服务器密码（如果有的话）
-		DB:       0,                     // Redis 数据库索引
-	})
+ 
 	
     PodIPMap := makeFunctionServiceMap(logger, time.Minute)
 
@@ -113,7 +106,6 @@ func MakeWasm(
 
 		fissionClient:    fissionClient,
 		kubernetesClient: kubernetesClient,
-		redisClient:      redisCli,
 		fpmap:            PodIPMap,
 		instanceID:       instanceID,
 
