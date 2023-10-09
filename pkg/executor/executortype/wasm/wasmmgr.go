@@ -53,7 +53,6 @@ type (
 		kubernetesClient kubernetes.Interface
 		fissionClient    versioned.Interface
 		fpmap            *functionPodIPMap
-		fnchannel        map[string]chan bool
 		instanceID       string
 		// fetcherConfig    *fetcherConfig.Config
 
@@ -100,6 +99,9 @@ func MakeWasm(
  
 	
     PodIPMap := makeFunctionServiceMap(logger, time.Minute)
+	if PodIPMap!=nil{
+		logger.Info("*****PodIPMap成功创建！！！！**********")
+	}
 
 	wasm := &Wasm{
 		logger: logger.Named("Wasm"),
@@ -375,8 +377,8 @@ func (wasm *Wasm) fnCreate(ctx context.Context, fn *fv1.Function) (*fscache.Func
 	if fn.ObjectMeta.Namespace != metav1.NamespaceDefault {
 		ns = fn.ObjectMeta.Namespace
 	}
-    ch:=make(chan bool)
-	wasm.fnchannel[string(fn.UID)]=ch
+    // ch:=make(chan bool)
+	// wasm.fnchannel[string(fn.UID)]=ch
 	// Envoy(istio-proxy) returns 404 directly before istio pilot
 	// propagates latest Envoy-specific configuration.
 	// Since Wasm waits for pods of deployment to be ready,
@@ -812,7 +814,6 @@ func (wasm *Wasm) StorePodIP(ctx context.Context, funcUID string,PodIP string) e
 	//在存入新的podip
 	wasm.fpmap.assign(funcUID,PodIP)
 
-	wasm.fnchannel[funcUID]<-true
     
 	wasm.logger.Info("******成功同步podip**********", zap.String("podip:", PodIP))
 

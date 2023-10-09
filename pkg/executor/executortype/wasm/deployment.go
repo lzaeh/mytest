@@ -367,25 +367,31 @@ func (wasm *Wasm) scaleDeployment(ctx context.Context, deplNS string, deplName s
 
 func (wasm *Wasm) waitForPodIP(ctx context.Context,uid string) (podIP string, err error) {
     //异步等待通道中获取podip的消息
-	select {
-		case data:= <-wasm.fnchannel[uid]:
-			//从本地podip的cache中取podip
-			if data==true{
-				podIP,err=wasm.fpmap.lookup(uid)
-				if err!=nil{
-					wasm.logger.Fatal("error getting podip from cache", zap.Error(err))
-				}
-				wasm.logger.Info("***********成功拿到PodIP**********",zap.String("PodIP",podIP))
-				close(wasm.fnchannel[uid])
-				return podIP,err
-			}
-		case <-time.After(300 * time.Millisecond):
-			wasm.logger.Fatal("********超时300ms,未拿到podIP*******")
-			return "",nil
+	// select {
+	// 	case data:= <-wasm.fnchannel[uid]:
+	// 		//从本地podip的cache中取podip
+	// 		if data==true{
+	// 			podIP,err=wasm.fpmap.lookup(uid)
+	// 			if err!=nil{
+	// 				wasm.logger.Fatal("error getting podip from cache", zap.Error(err))
+	// 			}
+	// 			wasm.logger.Info("***********成功拿到PodIP**********",zap.String("PodIP",podIP))
+	// 			close(wasm.fnchannel[uid])
+	// 			return podIP,err
+	// 		}
+	// 	case <-time.After(300 * time.Millisecond):
+	// 		wasm.logger.Fatal("********超时300ms,未拿到podIP*******")
+	// 		return "",nil
+	// }
+	
+    for {
+		if podIP,err=wasm.fpmap.lookup(uid);err!=nil{
+			continue
+		}else{
+			return podIP,err
+		}
+		
 	}
-
-   wasm.logger.Info("***********跳过select,没有到PodIP**********")
-   return "",nil
 }
 
 
