@@ -144,10 +144,10 @@ docker_manifests:
   # - name_template: huyezs/fetcher:latest
   #   image_templates:
   #     - huyezs/fetcher:latest-amd64
-  - name_template: huyezs/fission-bundle:latest
-    image_templates:
-      - huyezs/fission-bundle:latest-amd64
-  - name_template: huyezs/pre-upgrade-checks:latest
+  # - name_template: huyezs/fission-bundle:latest
+  #   image_templates:
+  #     - huyezs/fission-bundle:latest-amd64
+  # - name_template: huyezs/pre-upgrade-checks:latest
   #   image_templates:
   #     - huyezs/pre-upgrade-checks:latest-amd64
   # - name_template: huyezs/reporter:latest
