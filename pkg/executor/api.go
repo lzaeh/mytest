@@ -262,7 +262,7 @@ func (executor *Executor) GetHandler() http.Handler {
 	r.HandleFunc("/v2/tapService", executor.tapService).Methods("POST") // for backward compatibility
 	r.HandleFunc("/v2/tapServices", executor.tapServices).Methods("POST")
 	r.HandleFunc("/healthz", executor.healthHandler).Methods("GET")
-	r.HandleFunc("/v2/storePodIP/{functionUID}", executor.storePodIP).Methods("POST")//给下层提供存储podIP的接口
+	r.HandleFunc("/v2/storePodIP/{functionUid}", executor.storePodIP).Methods("POST")//给下层提供存储podIP的接口
 	r.HandleFunc("/v2/unTapService", executor.unTapService).Methods("POST")
 	return r
 }
@@ -285,7 +285,7 @@ func (executor *Executor) storePodIP(w http.ResponseWriter, r *http.Request) {
 	}
     logger.Info("*****Wasm成功拿到PodIP**********", zap.String("PodIP:",string(body)))
 	vars := mux.Vars(r)
-	UID := vars["functionUID"]
+	UID := vars["functionUid"]
    
   
     et:= executor.executorTypes[fv1.ExecutorTypeWasm]

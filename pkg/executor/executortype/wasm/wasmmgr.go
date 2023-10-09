@@ -127,6 +127,7 @@ func MakeWasm(
 	wasm.svcListerSynced = svcInformer.Informer().HasSynced
 
 	funcInformer.Informer().AddEventHandler(wasm.FuncInformerHandler(ctx))
+	wasm.logger.Info("*****wasm开始运行成功！！！！**********")
 	return wasm, nil
 }
 
