@@ -64,6 +64,11 @@ const (
 )
 
 const (
+	SVCTypePodIP   string = "podip"
+	SVCTypeName    string = "servicename"
+
+)
+const (
 	StrategyTypeExecution = "execution"
 )
 

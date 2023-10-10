@@ -1,11 +1,11 @@
 <mxfile host="65bd71144e">
     <diagram id="2R8lqByo1_nZbiNNt0bO" name="第 1 页">
-        <mxGraphModel dx="1517" dy="706" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" background="#ffffff" math="0" shadow="0">
+        <mxGraphModel dx="1917" dy="875" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="827" pageHeight="1169" background="#ffffff" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="165" value="" style="rounded=0;whiteSpace=wrap;html=1;labelBackgroundColor=none;strokeColor=#000000;fontSize=24;fontColor=#000000;fillColor=none;" vertex="1" parent="1">
-                    <mxGeometry x="-242" y="4056" width="696" height="532" as="geometry"/>
+                <mxCell id="165" value="" style="rounded=0;whiteSpace=wrap;html=1;labelBackgroundColor=none;strokeColor=#000000;fontSize=24;fontColor=#000000;fillColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="-242" y="4056" width="703" height="591" as="geometry"/>
                 </mxCell>
                 <mxCell id="79" value="" style="rounded=0;whiteSpace=wrap;html=1;strokeColor=#181616;fontFamily=Helvetica;fontSize=12;fontColor=#0d0d0d;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="235" y="2317.5" width="598" height="529.5" as="geometry"/>
@@ -446,50 +446,78 @@
                 <mxCell id="154" value="服务方A" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#181616;fontFamily=Helvetica;fontSize=12;fontColor=#0d0d0d;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="1360" y="2690.94" width="113" height="53.63" as="geometry"/>
                 </mxCell>
-                <mxCell id="161" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=26;fontColor=#000000;strokeColor=#000000;" edge="1" parent="1" source="158" target="160">
+                <mxCell id="161" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=26;fontColor=#000000;strokeColor=#000000;" parent="1" source="158" target="160" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="175" style="edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;fontSize=13;fontColor=#000000;" edge="1" parent="1" source="158" target="172">
+                <mxCell id="175" style="edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;fontSize=13;fontColor=#000000;" parent="1" source="158" target="172" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="158" value="&lt;font style=&quot;font-size: 13px;&quot;&gt;构建deployment的yaml时，加入annotation字段如&lt;br&gt;url:http://executor.fission/v2/storePodIP/funcionUID&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;strokeColor=#000000;fontColor=#000000;fillColor=none;" vertex="1" parent="1">
+                <mxCell id="158" value="&lt;font style=&quot;font-size: 13px;&quot;&gt;构建deployment的yaml时，加入annotation字段如&lt;br&gt;url:http://executor.fission/v2/storePodIP/funcionUID&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;strokeColor=#000000;fontColor=#000000;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="-233" y="4080" width="315" height="76" as="geometry"/>
                 </mxCell>
-                <mxCell id="163" style="edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;fontSize=24;fontColor=#000000;" edge="1" parent="1" source="160" target="162">
+                <mxCell id="163" style="edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;fontSize=24;fontColor=#000000;" parent="1" source="160" target="162" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="160" value="&lt;font style=&quot;font-size: 24px;&quot;&gt;k8s&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;labelBackgroundColor=none;strokeColor=#000000;fontSize=26;fontColor=#000000;fillColor=none;" vertex="1" parent="1">
+                <mxCell id="160" value="&lt;font style=&quot;font-size: 24px;&quot;&gt;k8s API Server&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;labelBackgroundColor=none;strokeColor=#000000;fontSize=26;fontColor=#000000;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="505" y="4089.5" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="166" style="edgeStyle=none;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;fontSize=13;fontColor=#000000;" edge="1" parent="1" source="162" target="164">
+                <mxCell id="166" style="edgeStyle=none;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;fontSize=13;fontColor=#000000;" parent="1" source="162" target="164" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="162" value="&lt;font style=&quot;font-size: 23px;&quot;&gt;containerd&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;strokeColor=#000000;fontSize=26;fontColor=#000000;fillColor=none;" vertex="1" parent="1">
+                <mxCell id="162" value="&lt;font style=&quot;font-size: 23px;&quot;&gt;containerd&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;strokeColor=#000000;fontSize=26;fontColor=#000000;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="493" y="4184.5" width="144" height="61" as="geometry"/>
                 </mxCell>
-                <mxCell id="169" style="edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;fontSize=13;fontColor=#000000;" edge="1" parent="1" source="164" target="168">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="169" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;fontSize=13;fontColor=#000000;" parent="1" source="164" target="172" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="255" y="4301" as="targetPoint"/>
+                    </mxGeometry>
                 </mxCell>
-                <mxCell id="164" value="&lt;font style=&quot;font-size: 14px;&quot;&gt;调用存储podip服务，将podip写入请求body，发送post请求&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;strokeColor=#000000;fontColor=#000000;fillColor=none;" vertex="1" parent="1">
+                <mxCell id="164" value="&lt;font style=&quot;font-size: 14px;&quot;&gt;调用存储podip服务，将podip写入请求body，发送post请求&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;strokeColor=#000000;fontColor=#000000;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="91" y="4174" width="328" height="82" as="geometry"/>
                 </mxCell>
-                <mxCell id="177" style="edgeStyle=none;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;strokeColor=#000000;fontSize=13;fontColor=#000000;" edge="1" parent="1" source="167" target="172">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="187" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#000000;fontSize=15;fontColor=#000000;" edge="1" parent="1" source="172" target="179">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="-301" y="4477"/>
+                            <mxPoint x="-301" y="4169"/>
+                        </Array>
+                    </mxGeometry>
                 </mxCell>
-                <mxCell id="167" value="&lt;font style=&quot;font-size: 14px;&quot;&gt;开启协程,通过将拿到podip的信息写入functionuid对应&lt;br&gt;通道&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;strokeColor=#000000;fontColor=#000000;fillColor=none;" vertex="1" parent="1">
-                    <mxGeometry x="147" y="4428" width="216" height="107" as="geometry"/>
-                </mxCell>
-                <mxCell id="170" style="edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#000000;fontSize=13;fontColor=#000000;" edge="1" parent="1" source="168" target="167">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="168" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;存储podip&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;strokeColor=#000000;fontColor=#000000;fillColor=none;" vertex="1" parent="1">
-                    <mxGeometry x="91" y="4301" width="328" height="82" as="geometry"/>
-                </mxCell>
-                <mxCell id="172" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;从functionuid对应的通道中等待数据&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;strokeColor=#000000;fontColor=#000000;fillColor=none;" vertex="1" parent="1">
+                <mxCell id="172" value="&lt;span style=&quot;font-size: 14px;&quot;&gt;本地cache&lt;/span&gt;&lt;br style=&quot;font-size: 14px;&quot;&gt;&lt;span style=&quot;font-size: 14px;&quot;&gt;本质为一个map&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;strokeColor=#000000;fontColor=#000000;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="-169" y="4422" width="123" height="111" as="geometry"/>
                 </mxCell>
-                <mxCell id="178" value="Wasm" style="text;strokeColor=none;align=center;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;labelBackgroundColor=none;fontSize=27;fontColor=#000000;strokeWidth=4;" vertex="1" parent="1">
+                <mxCell id="178" value="Wasm" style="text;strokeColor=none;align=center;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;labelBackgroundColor=none;fontSize=27;fontColor=#000000;strokeWidth=4;" parent="1" vertex="1">
                     <mxGeometry x="350" y="4066" width="60" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="180" style="edgeStyle=none;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;strokeColor=#000000;" edge="1" parent="1" source="179">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="-230" y="4113" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="-303" y="4113"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="179" value="&lt;font style=&quot;font-size: 24px;&quot;&gt;Agent&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;labelBackgroundColor=none;strokeColor=#000000;fontSize=26;fontColor=#000000;fillColor=none;" vertex="1" parent="1">
+                    <mxGeometry x="-501" y="4056" width="154" height="226" as="geometry"/>
+                </mxCell>
+                <mxCell id="181" style="edgeStyle=none;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeColor=#000000;" edge="1" parent="1" target="179">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="-424" y="4445" as="sourcePoint"/>
+                        <mxPoint x="-472.08799999999997" y="4449.36" as="targetPoint"/>
+                        <Array as="points"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="183" value="&lt;font style=&quot;font-size: 22px;&quot; color=&quot;#000000&quot;&gt;HTTP&lt;/font&gt;" style="text;strokeColor=none;align=center;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="-515" y="4426" width="174" height="94" as="geometry"/>
+                </mxCell>
+                <mxCell id="185" value="&lt;font style=&quot;font-size: 15px;&quot; color=&quot;#000000&quot;&gt;根据uid写入podip&lt;/font&gt;" style="text;strokeColor=none;align=center;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=15;" vertex="1" parent="1">
+                    <mxGeometry x="-10" y="4456" width="194" height="94" as="geometry"/>
+                </mxCell>
+                <mxCell id="186" value="&lt;font color=&quot;#000000&quot;&gt;轮询访问cache，函数uid对应podip是否存在&lt;/font&gt;" style="text;strokeColor=none;align=center;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=15;" vertex="1" parent="1">
+                    <mxGeometry x="-226" y="4285" width="134" height="114" as="geometry"/>
+                </mxCell>
+                <mxCell id="188" value="&lt;font color=&quot;#000000&quot;&gt;PodIP返回给Agent&lt;/font&gt;" style="text;strokeColor=none;align=center;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=15;" vertex="1" parent="1">
+                    <mxGeometry x="-382" y="4449" width="134" height="114" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
