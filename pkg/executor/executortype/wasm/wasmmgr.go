@@ -138,7 +138,7 @@ func (wasm *Wasm) Run(ctx context.Context) {
 	if ok := k8sCache.WaitForCacheSync(ctx.Done(), wasm.deplListerSynced, wasm.svcListerSynced); !ok {
 		wasm.logger.Fatal("failed to wait for caches to sync")
 	}
-	go wasm.idleObjectReaper(ctx)
+	// go wasm.idleObjectReaper(ctx)
 }
 
 // GetTypeName returns the executor type name.
