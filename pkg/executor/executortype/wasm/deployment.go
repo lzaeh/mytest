@@ -3,6 +3,7 @@ package wasm
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"go.uber.org/zap"
@@ -15,6 +16,7 @@ import (
 
 	fv1 "github.com/fission/fission/pkg/apis/core/v1"
 	"github.com/fission/fission/pkg/executor/util"
+
 	// "github.com/fission/fission/pkg/utils"
 	otelUtils "github.com/fission/fission/pkg/utils/otel"
 	// "k8s.io/apimachinery/pkg/watch"
@@ -397,8 +399,8 @@ func (wasm *Wasm) waitForPodIP(ctx context.Context,uid string) (podIP string, er
 
 
 func (wasm *Wasm) getStoreURL(uid string)(url string){
-	
-	Url := fmt.Sprintf("http://43.153.27.229:32088/v2/storePodIP/%v",uid)
+	ip:= os.Getenv("MASTER_IP")
+	Url := fmt.Sprintf("http://%v:32088/v2/storePodIP/%v",ip,uid)
 	wasm.logger.Info("***********StoreURL构建成功!**********",zap.String("StoreUrl",Url))
     return Url
 }
