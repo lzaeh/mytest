@@ -17,9 +17,9 @@ builds:
     id: fission-bundle
     ldflags:
       - -s -w
-      - -X github.com/lzaeh/wasmfunction-test/pkg/info.GitCommit={{.ShortCommit}}
-      - -X github.com/lzaeh/wasmfunction-test/pkg/info.BuildDate={{.Date}}
-      - -X github.com/lzaeh/wasmfunction-test/pkg/info.Version={{.Tag}}
+      - -X github.com/lzaeh/mytest/pkg/info.GitCommit={{.ShortCommit}}
+      - -X github.com/lzaeh/mytest/pkg/info.BuildDate={{.Date}}
+      - -X github.com/lzaeh/mytest/pkg/info.Version={{.Tag}}
     gcflags:
       - all=-trimpath={{ if index .Env "GITHUB_WORKSPACE"}}{{ .Env.GITHUB_WORKSPACE }}{{ else }}{{ .Env.PWD }}{{ end }}
     asmflags:
