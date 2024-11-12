@@ -22,9 +22,9 @@ import (
 	// "k8s.io/apimachinery/pkg/watch"
 )
 
-func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, deployName string, deployLabels map[string]string, deployAnnotations map[string]string, deployNamespace string) (*appsv1.Deployment, string,error) {
+func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, deployName string, deployLabels map[string]string, deployAnnotations map[string]string, deployNamespace string) (*appsv1.Deployment, string, error) {
 	logger := otelUtils.LoggerWithTraceID(ctx, wasm.logger)
-    var podIP string
+	var podIP string
 	// The specializationTimeout here refers to the creation of the pod and not the loading of function
 	// as in other executors.
 	specializationTimeout := fn.Spec.InvokeStrategy.ExecutionStrategy.SpecializationTimeout
@@ -39,11 +39,11 @@ func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, d
 
 	deployment, err := wasm.getDeploymentSpec(ctx, fn, &minScale, deployName, deployNamespace, deployLabels, deployAnnotations)
 	if err != nil {
-		return nil, podIP,err
+		return nil, podIP, err
 	}
 	existingDepl, err := wasm.kubernetesClient.AppsV1().Deployments(deployNamespace).Get(ctx, deployName, metav1.GetOptions{})
 	if err != nil && !k8s_err.IsNotFound(err) {
-		return nil, podIP,err
+		return nil, podIP, err
 	}
 
 	// Create new deployment if one does not previously exist
@@ -60,7 +60,7 @@ func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, d
 					zap.String("function", fn.ObjectMeta.Name),
 					zap.String("deployment_name", deployName),
 					zap.String("deployment_namespace", deployNamespace))
-				return nil, podIP,err
+				return nil, podIP, err
 			}
 		}
 		otelUtils.SpanTrackEvent(ctx, "deploymentCreated", otelUtils.GetAttributesForDeployment(depl)...)
@@ -68,13 +68,13 @@ func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, d
 		// if minScale > 0 {
 		// 	depl, err = wasm.waitForDeploy(ctx, depl, minScale, specializationTimeout)
 		// }
-		podIP,err=wasm.waitForPodIP(ctx,string(fn.UID))
-		if err!=nil{
+		podIP, err = wasm.waitForPodIP(ctx, string(fn.UID))
+		if err != nil {
 			wasm.logger.Error("error getting podIP ", zap.Error(err), zap.String("podIP", podIP))
-			return depl,podIP, err
+			return depl, podIP, err
 		}
 
-		return depl, podIP,err
+		return depl, podIP, err
 	}
 
 	// Try to adopt orphan deployment created by the old executor.
@@ -91,24 +91,24 @@ func (wasm *Wasm) createOrGetDeployment(ctx context.Context, fn *fv1.Function, d
 		if err != nil {
 			logger.Warn("error adopting cn", zap.Error(err),
 				zap.String("cn", deployName), zap.String("ns", deployNamespace))
-			return nil, podIP,err
+			return nil, podIP, err
 		}
 		// In this case, we just return without waiting for it for fast bootstraping.
-		return existingDepl, podIP,nil
+		return existingDepl, podIP, nil
 	}
 
 	if *existingDepl.Spec.Replicas < minScale {
 		err = wasm.scaleDeployment(ctx, existingDepl.Namespace, existingDepl.Name, minScale)
 		if err != nil {
 			logger.Error("error scaling up function deployment", zap.Error(err), zap.String("function", fn.ObjectMeta.Name))
-			return nil, podIP,err
+			return nil, podIP, err
 		}
 	}
 	if existingDepl.Status.AvailableReplicas < minScale {
 		existingDepl, err = wasm.waitForDeploy(ctx, existingDepl, minScale, specializationTimeout)
 	}
 
-	return existingDepl, podIP,err
+	return existingDepl, podIP, err
 }
 
 func (wasm *Wasm) updateDeployment(ctx context.Context, deployment *appsv1.Deployment, ns string) error {
@@ -187,9 +187,6 @@ func (wasm *Wasm) getDeploymentSpec(ctx context.Context, fn *fv1.Function, targe
 		podLabels[k] = v
 	}
 
-
-    
-
 	// Set maxUnavailable and maxSurge to 20% is because we want
 	// fission to rollout newer function version gradually without
 	// affecting any online service. For example, if you set maxSurge
@@ -226,7 +223,7 @@ func (wasm *Wasm) getDeploymentSpec(ctx context.Context, fn *fv1.Function, targe
 
 	container := &apiv1.Container{
 		Name:                   fn.ObjectMeta.Name,
-		ImagePullPolicy:        wasm.runtimeImagePullPolicy,
+		ImagePullPolicy:        apiv1.PullIfNotPresent,
 		TerminationMessagePath: "/dev/termination-log",
 		// Lifecycle: &apiv1.Lifecycle{
 		// 	PreStop: &apiv1.LifecycleHandler{
@@ -248,13 +245,13 @@ func (wasm *Wasm) getDeploymentSpec(ctx context.Context, fn *fv1.Function, targe
 		// https://istio.io/docs/setup/kubernetes/additional-setup/requirements/
 		// Resources: resources,
 	}
-	runtimeClass:="wasm"
+	runtimeClass := "wasm"
 	podSpec, err := util.MergePodSpec(&apiv1.PodSpec{
-		RuntimeClassName:                              &runtimeClass,
+		RuntimeClassName:              &runtimeClass,
 		Containers:                    []apiv1.Container{*container},
 		TerminationGracePeriodSeconds: &gracePeriodSeconds,
 	}, fn.Spec.PodSpec)
-	
+
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +308,6 @@ func (wasm *Wasm) scaleDeployment(ctx context.Context, deplNS string, deplName s
 	return err
 }
 
-
 // func (wasm *Wasm) waitForPodIP(ctx context.Context, depl *appsv1.Deployment) (podIP string, err error) {
 // 	// 监听Pod变化
 // 	watcher, err := wasm.kubernetesClient.CoreV1().Pods(depl.Namespace).Watch(context.TODO(), metav1.ListOptions{
@@ -327,12 +323,12 @@ func (wasm *Wasm) scaleDeployment(ctx context.Context, deplNS string, deplName s
 
 // 	// 监听Pod事件
 // 	for {
-// 		pod, ok  := <-watcher.ResultChan() 
+// 		pod, ok  := <-watcher.ResultChan()
 // 		// := event.Object.(*apiv1.Pod)
 // 		if !ok {
 // 			continue
 // 		}
-		
+
 // 		if pod.Type==watch.Added {
 // 			wasm.logger.Info("************有新增pod事件**************")
 // 			podIP,err=wasm.sync(depl)
@@ -340,7 +336,7 @@ func (wasm *Wasm) scaleDeployment(ctx context.Context, deplNS string, deplName s
 // 		}
 
 // 	}
-	
+
 // }
 
 // func (wasm *Wasm) sync(depl *appsv1.Deployment)(string,error){
@@ -367,8 +363,8 @@ func (wasm *Wasm) scaleDeployment(ctx context.Context, deplNS string, deplName s
 
 // }
 
-func (wasm *Wasm) waitForPodIP(ctx context.Context,uid string) (podIP string, err error) {
-    //异步等待通道中获取podip的消息
+func (wasm *Wasm) waitForPodIP(ctx context.Context, uid string) (podIP string, err error) {
+	//异步等待通道中获取podip的消息
 	// select {
 	// 	case data:= <-wasm.fnchannel[uid]:
 	// 		//从本地podip的cache中取podip
@@ -385,23 +381,22 @@ func (wasm *Wasm) waitForPodIP(ctx context.Context,uid string) (podIP string, er
 	// 		wasm.logger.Fatal("********超时300ms,未拿到podIP*******")
 	// 		return "",nil
 	// }
-	
-    for {
-		if podIP,err=wasm.fpmap.lookup(uid);err!=nil{
+
+	for {
+		if podIP, err = wasm.fpmap.lookup(uid); err != nil {
 			continue
-		}else{
+		} else {
 			wasm.logger.Info("******getServiceForFunction拿到PODIP可以返回*********")
-			return podIP,err
+			return podIP, err
 		}
-		
+
 	}
 }
 
-
-func (wasm *Wasm) getStoreURL(uid string)(url string){
-	ip:= os.Getenv("MASTER_IP")
-	port:= os.Getenv("NODE_PORT")
-	Url := fmt.Sprintf("http://%v:%v/v2/storePodIP/%v",ip,port,uid)
-	wasm.logger.Info("***********StoreURL构建成功!**********",zap.String("StoreUrl",Url))
-    return Url
+func (wasm *Wasm) getStoreURL(uid string) (url string) {
+	ip := os.Getenv("MASTER_IP")
+	port := os.Getenv("NODE_PORT")
+	Url := fmt.Sprintf("http://%v:%v/v2/storePodIP/%v", ip, port, uid)
+	wasm.logger.Info("***********StoreURL构建成功!**********", zap.String("StoreUrl", Url))
+	return Url
 }

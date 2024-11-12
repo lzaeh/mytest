@@ -18,6 +18,7 @@ package function
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -66,7 +67,9 @@ func (opts *CreateSubCommand) complete(input cli.Input) error {
 	fnName := input.String(flagkey.FnName)
 	fnNamespace := input.String(flagkey.NamespaceFunction)
 	envNamespace := input.String(flagkey.NamespaceEnvironment)
-
+	envName := input.String(flagkey.FnEnvironmentName)
+	//免重复判断
+	wasmFlag := false
 	// user wants a spec, create a yaml file with package and function
 	toSpec := false
 	if input.Bool(flagkey.SpecSave) {
@@ -116,22 +119,38 @@ func (opts *CreateSubCommand) complete(input cli.Input) error {
 		return errors.Errorf("this command does not support creating function of executor type container. Check `fission function run-container --help`")
 	}
 
-	invokeStrategy, err := getInvokeStrategy(input, nil)
-	if err != nil {
-		return err
+	// 检查 参数中的 env name 是不是 -wasm 结尾，是的话，设置 wasm 执行器，不是的话，按照原代码逻辑走下去即可
+	var (
+		invokeStrategy *fv1.InvokeStrategy
+		err            error
+	)
+	if checkWasmEnv(envName) {
+		wasmFlag = true
+		es, err := getExecutionStrategy(fv1.ExecutorTypeWasm, input)
+		if err != nil {
+			return err
+		}
+		invokeStrategy = &fv1.InvokeStrategy{
+			ExecutionStrategy: *es,
+			StrategyType:      fv1.StrategyTypeExecution,
+		}
+	} else {
+		invokeStrategy, err = getInvokeStrategy(input, nil)
+		if err != nil {
+			return err
+		}
 	}
+
 	resourceReq, err := util.GetResourceReqs(input, &apiv1.ResourceRequirements{})
 	if err != nil {
 		return err
 	}
 
 	var pkgMetadata *metav1.ObjectMeta
-	var envName string
-	
 
 	if len(pkgName) > 0 {
 		var pkg *fv1.Package
-		
+
 		if toSpec {
 
 			fr, err := spec.ReadSpecs(specDir, specIgnore, false)
@@ -324,6 +343,35 @@ func (opts *CreateSubCommand) complete(input cli.Input) error {
 			Name:            pkgMetadata.Name,
 			ResourceVersion: pkgMetadata.ResourceVersion,
 		},
+	}
+	//如果这个函数绑定的是 -wasm 环境，我们需要将其容器的规格做一些特殊处理，因为使用了 wasm 执行器，执行器中代码对容器规格的处理不是很完整。
+	fnGracePeriod := input.Int64(flagkey.FnGracePeriod)
+	if fnGracePeriod < 0 {
+		console.Warn("grace period must be a non-negative integer, using default value (6 mins)")
+	}
+	if wasmFlag {
+		env, err := opts.Client().V1().Environment().Get(&metav1.ObjectMeta{
+			Name:      envName,
+			Namespace: envNamespace,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to get environment: %v", err)
+		}
+		envImage := env.Spec.Runtime.Image
+		container := &apiv1.Container{
+			Name:  fnName,
+			Image: envImage,
+			Ports: []apiv1.ContainerPort{
+				{
+					Name:          "http-env",
+					ContainerPort: 10086,
+				},
+			},
+		}
+		opts.function.Spec.PodSpec = &apiv1.PodSpec{
+			Containers:                    []apiv1.Container{*container},
+			TerminationGracePeriodSeconds: &fnGracePeriod,
+		}
 	}
 
 	return nil
@@ -625,4 +673,8 @@ func getTargetCPU(input cli.Input) (int, error) {
 		return 0, errors.Errorf("%v must be a value between 1 - 100", flagkey.RuntimeTargetcpu)
 	}
 	return targetCPU, nil
+}
+
+func checkWasmEnv(envName string) bool {
+	return strings.HasSuffix(envName, "-wasm")
 }

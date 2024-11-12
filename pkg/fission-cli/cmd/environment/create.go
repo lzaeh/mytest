@@ -17,12 +17,20 @@ limitations under the License.
 package environment
 
 import (
+	"context"
 	"fmt"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
 
 	fv1 "github.com/fission/fission/pkg/apis/core/v1"
 	"github.com/fission/fission/pkg/fission-cli/cliwrapper/cli"
@@ -32,12 +40,17 @@ import (
 	flagkey "github.com/fission/fission/pkg/fission-cli/flag/key"
 	"github.com/fission/fission/pkg/fission-cli/util"
 	"github.com/fission/fission/pkg/utils"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type CreateSubCommand struct {
 	cmd.CommandActioner
 	env *fv1.Environment
 }
+
+const HostPath = "/var/lib/kaniko/workplace"
+const kanikoFilePath = "/var/lib/kaniko/files/pod.yaml"
+const WasmRuntimeClass = "wasm"
 
 func Create(input cli.Input) error {
 	return (&CreateSubCommand{}).do(input)
@@ -52,13 +65,137 @@ func (opts *CreateSubCommand) do(input cli.Input) error {
 }
 
 // complete creates a environment objects and populates it with default value and CLI inputs.
+// 在 complete 中，检测 --image 内容，如果是 .wasm 结尾的文件，我们可以通过 kaniko 构建出镜像，使后面构建 env 时使用新的镜像本地地址，如果不是，则默认使用这个镜像
 func (opts *CreateSubCommand) complete(input cli.Input) error {
-	env, err := createEnvironmentFromCmd(input)
+	envImageName := input.String(flagkey.EnvImage)
+	envName := input.String(flagkey.EnvName)
+	imageUrl := envImageName
+	//如果以 .wasm 结尾，我们需要构建镜像并重新指定 imageUrl
+	if checkWasm(envImageName) {
+		err := createDockerfile(envImageName)
+		if err != nil {
+			return fmt.Errorf("error building dockerfile: %w", err)
+		}
+		result, err := BuildImageWithKaniko(envName)
+		if err != nil {
+			return fmt.Errorf("error building image: %w", err)
+		}
+		imageUrl = result
+		fmt.Println(result)
+	}
+	// 由于 flagkey 中的属性是常量，我们通过新建变量来指定 envImage
+	env, err := createEnvironmentFromCmd(input, imageUrl)
 	if err != nil {
 		return err
 	}
 	opts.env = env
 	return nil
+}
+
+// 按照规则 在 hostpath 下构建 dockerfile
+func createDockerfile(wasmFileName string) error {
+	err := os.MkdirAll(HostPath, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed to create hostpath directory: %w", err)
+	}
+	dockerfilePath := filepath.Join(HostPath, "Dockerfile")
+	content := fmt.Sprintf(`
+FROM scratch
+COPY %s /
+ENTRYPOINT ["%s"]
+`, wasmFileName, wasmFileName)
+
+	file, err := os.Create(dockerfilePath)
+	if err != nil {
+		return fmt.Errorf("failed to create Dockerfile: %w", err)
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			fmt.Printf("Error closing file: %v\n", err)
+		}
+	}(file)
+
+	_, err = file.WriteString(content)
+	if err != nil {
+		return fmt.Errorf("failed to write to Dockerfile: %w", err)
+	}
+
+	fmt.Println("Dockerfile created at:", dockerfilePath)
+	return nil
+}
+
+// 使用 kaniko pod 将镜像打包
+func BuildImageWithKaniko(envName string) (string, error) {
+	cmd := exec.Command("kubectl", "apply", "-f", kanikoFilePath)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to apply pod.yaml: %v, output: %s", err, string(output))
+	}
+	fmt.Printf("Applied pod.yaml: %s\n", output)
+	config, err := clientcmd.BuildConfigFromFlags("", clientcmd.RecommendedHomeFile)
+	if err != nil {
+		log.Fatalf("failed to create kubeconfig: %v", err)
+	}
+	fmt.Println("Kubeconfig loaded successfully.")
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Fatalf("failed to create Kubernetes client: %v", err)
+	}
+	fmt.Println("Kubernetes client created.")
+	podName := "kaniko"
+	for {
+		// Get Pod status
+		pod, err := clientset.CoreV1().Pods("fission").Get(context.TODO(), podName, metav1.GetOptions{})
+		if err != nil {
+			return "", fmt.Errorf("failed to get pod status: %v", err)
+		}
+		// Check if the Pod is completed
+		if pod.Status.Phase == corev1.PodSucceeded {
+			fmt.Printf("Pod %s completed successfully and will be removed immediately\n", podName)
+			if err := clientset.CoreV1().Pods("fission").Delete(context.TODO(), podName, metav1.DeleteOptions{}); err != nil {
+				return "", fmt.Errorf("failed to delete pod %s: %v", podName, err)
+			}
+			break
+		} else if pod.Status.Phase == corev1.PodFailed {
+			return "", fmt.Errorf("Pod %s failed, use [kubectl logs kaniko] to find problems. Please remove pod named [kaniko] by yourself !!!", podName)
+		}
+		fmt.Printf("Waiting for Pod %s to complete...\n", podName)
+		time.Sleep(1 * time.Second) // Poll every 1 seconds
+	}
+
+	//此时如果成功打包，在 hostpath 下会有 img.tar 文件
+	//需要使用 命令 ctr -a /run/containerd/containerd.sock -n k8s.io images import /hostpath/image.tar
+	//然后使用命令 ctr -a /run/containerd/containerd.sock -n k8s.io images tag docker.io/library/image:latest k8s.io/xx-wasm:latest
+	//xx-wasm 来自 函数的传参 envName
+	//上面的步骤做完，镜像就导入到本地了，然后就需要清理资源：
+	//pod已经在上面的步骤保证删除了
+	//把 hostpath 下的所有文件删除
+	// Import the image tar file into containerd
+	imageTarPath := filepath.Join(HostPath, "img.tar")
+	importCmd := exec.Command("ctr", "-a", "/run/containerd/containerd.sock", "-n", "k8s.io", "images", "import", imageTarPath)
+	importOutput, err := importCmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to import image.tar: %v, output: %s", err, string(importOutput))
+	}
+	fmt.Printf("Imported image from %s\n", imageTarPath)
+
+	// Tag the imported image with `envName` as `k8s.io/envName:latest`
+	tagName := fmt.Sprintf("k8s.io/%s:latest", envName)
+	tagCmd := exec.Command("ctr", "-a", "/run/containerd/containerd.sock", "-n", "k8s.io", "images", "tag", "docker.io/library/image:latest", tagName)
+	tagOutput, err := tagCmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to tag image as %s: %v, output: %s", tagName, err, string(tagOutput))
+	}
+	fmt.Printf("Tagged image as %s\n", tagName)
+
+	// Clean up hostpath files
+	cleanupCmd := exec.Command("rm", "-rf", HostPath+"/*")
+	if err := cleanupCmd.Run(); err != nil {
+		return "", fmt.Errorf("failed to clean up hostpath: %v", err)
+	}
+	fmt.Println("Cleaned up hostpath")
+	return tagName, nil
 }
 
 // run write the resource to a spec file or create a fission CRD with remote fission server.
@@ -100,11 +237,10 @@ func (opts *CreateSubCommand) run(input cli.Input) error {
 }
 
 // createEnvironmentFromCmd creates environment initialized with CLI input.
-func createEnvironmentFromCmd(input cli.Input) (*fv1.Environment, error) {
+func createEnvironmentFromCmd(input cli.Input, imageUrl string) (*fv1.Environment, error) {
 	e := utils.MultiErrorWithFormat()
-
 	envName := input.String(flagkey.EnvName)
-	envImg := input.String(flagkey.EnvImage)
+	envImg := imageUrl
 	envNamespace := input.String(flagkey.NamespaceEnvironment)
 	envBuildCmd := input.String(flagkey.EnvBuildcommand)
 	envExternalNetwork := input.Bool(flagkey.EnvExternalNetwork)
@@ -159,14 +295,19 @@ func createEnvironmentFromCmd(input cli.Input) (*fv1.Environment, error) {
 		return nil, e.ErrorOrNil()
 	}
 
+	annotations := map[string]string{}
+	if checkWasmEnv(envName) {
+		annotations["kubernetes.io/runtime-class"] = WasmRuntimeClass
+	}
 	env := &fv1.Environment{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       fv1.CRD_NAME_ENVIRONMENT,
 			APIVersion: fv1.CRD_VERSION,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      envName,
-			Namespace: envNamespace,
+			Name:        envName,
+			Namespace:   envNamespace,
+			Annotations: annotations,
 		},
 		Spec: fv1.EnvironmentSpec{
 			Version: envVersion,
@@ -202,4 +343,12 @@ func createEnvironmentFromCmd(input cli.Input) (*fv1.Environment, error) {
 	}
 
 	return env, nil
+}
+
+func checkWasmEnv(envName string) bool {
+	return strings.HasSuffix(envName, "-wasm")
+}
+
+func checkWasm(envImageName string) bool {
+	return strings.HasSuffix(envImageName, ".wasm")
 }
