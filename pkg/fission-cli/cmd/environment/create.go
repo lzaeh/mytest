@@ -172,7 +172,7 @@ func BuildImageWithKaniko(envName string) (string, error) {
 	//pod已经在上面的步骤保证删除了
 	//把 hostpath 下的所有文件删除
 	// Import the image tar file into containerd
-	imageTarPath := filepath.Join(HostPath, "img.tar")
+	imageTarPath := filepath.Join(HostPath, "image.tar")
 	importCmd := exec.Command("ctr", "-a", "/run/containerd/containerd.sock", "-n", "k8s.io", "images", "import", imageTarPath)
 	importOutput, err := importCmd.CombinedOutput()
 	if err != nil {
