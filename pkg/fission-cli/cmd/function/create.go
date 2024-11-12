@@ -676,5 +676,6 @@ func getTargetCPU(input cli.Input) (int, error) {
 }
 
 func checkWasmEnv(envName string) bool {
+	fmt.Printf("Checking if environment name %s has '-wasm' suffix...\n", envName)
 	return strings.HasSuffix(envName, "-wasm")
 }

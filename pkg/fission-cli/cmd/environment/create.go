@@ -346,9 +346,12 @@ func createEnvironmentFromCmd(input cli.Input, imageUrl string) (*fv1.Environmen
 }
 
 func checkWasmEnv(envName string) bool {
+	fmt.Printf("Checking if environment name %s has '-wasm' suffix...\n", envName)
 	return strings.HasSuffix(envName, "-wasm")
 }
 
 func checkWasm(envImageName string) bool {
-	return strings.HasSuffix(envImageName, ".wasm")
+	isWasm := strings.HasSuffix(envImageName, ".wasm")
+	fmt.Printf("checkWasm: Checking if %s is a wasm file -> %t\n", envImageName, isWasm)
+	return isWasm
 }
