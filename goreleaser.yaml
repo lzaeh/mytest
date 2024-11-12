@@ -1,3 +1,4 @@
+version: 2
 project_name: fission
 release:
   github:
@@ -72,8 +73,6 @@ docker_manifests:
     image_templates:
       - amnesia1997/fission-bundle-test:{{ .Tag }}-amd64
 
-changelog:
-  skip: false
 archives:
   - id: fission
     builds:
