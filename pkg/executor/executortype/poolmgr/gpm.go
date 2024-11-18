@@ -26,6 +26,17 @@ import (
 	"sync"
 	"time"
 
+	fv1 "github.com/fission/fission/pkg/apis/core/v1"
+	"github.com/fission/fission/pkg/cache"
+	"github.com/fission/fission/pkg/crd"
+	"github.com/fission/fission/pkg/executor/executortype"
+	"github.com/fission/fission/pkg/executor/fscache"
+	"github.com/fission/fission/pkg/executor/reaper"
+	fetcherConfig "github.com/fission/fission/pkg/fetcher/config"
+	"github.com/fission/fission/pkg/generated/clientset/versioned"
+	finformerv1 "github.com/fission/fission/pkg/generated/informers/externalversions/core/v1"
+	"github.com/fission/fission/pkg/utils"
+	otelUtils "github.com/fission/fission/pkg/utils/otel"
 	"github.com/hashicorp/go-multierror"
 	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/zap"
@@ -43,18 +54,6 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	k8sCache "k8s.io/client-go/tools/cache"
 	metricsclient "k8s.io/metrics/pkg/client/clientset/versioned"
-
-	fv1 "github.com/fission/fission/pkg/apis/core/v1"
-	"github.com/fission/fission/pkg/cache"
-	"github.com/fission/fission/pkg/crd"
-	"github.com/fission/fission/pkg/executor/executortype"
-	"github.com/fission/fission/pkg/executor/fscache"
-	"github.com/fission/fission/pkg/executor/reaper"
-	fetcherConfig "github.com/fission/fission/pkg/fetcher/config"
-	"github.com/fission/fission/pkg/generated/clientset/versioned"
-	finformerv1 "github.com/fission/fission/pkg/generated/informers/externalversions/core/v1"
-	"github.com/fission/fission/pkg/utils"
-	otelUtils "github.com/fission/fission/pkg/utils/otel"
 )
 
 var _ executortype.ExecutorType = &GenericPoolManager{}
@@ -479,10 +478,9 @@ func (gpm *GenericPoolManager) service() {
 				if req.env.ObjectMeta.Namespace != metav1.NamespaceDefault {
 					ns = req.env.ObjectMeta.Namespace
 				}
-				gpm.logger.Info("Handling GET_POOL request",
-					zap.String("Environment ObjectMeta.Name", req.env.ObjectMeta.Name),
-					zap.String("Environment Name", req.env.Name),
-				)
+				fmt.Println("Environment Name:", req.env.ObjectMeta.Name)
+				fmt.Println("Environment Namespace:", req.env.ObjectMeta.Namespace)
+
 				if strings.HasSuffix(req.env.ObjectMeta.Name, "-wasm") {
 					gpm.logger.Info("Detected WebAssembly environment; skipping pool creation",
 						zap.String("environment", req.env.ObjectMeta.Name),
