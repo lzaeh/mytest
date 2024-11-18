@@ -3,7 +3,7 @@ project_name: fission
 release:
   github:
     owner: lzaeh
-    name: wasmfunction-test
+    name: mytest
   prerelease: true
   draft: false
 
