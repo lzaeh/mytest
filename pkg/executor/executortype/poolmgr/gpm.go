@@ -465,10 +465,6 @@ func (gpm *GenericPoolManager) CleanupOldExecutorObjects(ctx context.Context) {
 func (gpm *GenericPoolManager) service() {
 	for {
 		req := <-gpm.requestChannel
-		fmt.Println("Detected WebAssembly environment; skipping pool creation")
-		fmt.Println("Environment Name:", req.env.ObjectMeta.Name)
-		fmt.Println("Environment Namespace:", req.env.ObjectMeta.Namespace)
-
 		switch req.requestType {
 		case GET_POOL:
 			// just because they are missing in the cache, we end up creating another duplicate pool.

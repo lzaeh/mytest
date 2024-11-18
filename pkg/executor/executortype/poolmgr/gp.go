@@ -110,6 +110,8 @@ func MakeGenericPool(
 			zap.String("value", podReadyTimeoutStr),
 			zap.Duration("default", podReadyTimeout))
 	}
+	gpLogger.Info("fucking env name", zap.Any("name", env.Name))
+	gpLogger.Info("fucking env name", zap.Any("name", env.ObjectMeta.Name))
 
 	gpLogger.Info("creating pool", zap.Any("environment", env))
 
