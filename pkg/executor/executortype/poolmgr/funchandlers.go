@@ -155,7 +155,6 @@ func FunctionEventHandlers(logger *zap.Logger, kubernetesClient kubernetes.Inter
 						zap.Error(err),
 						zap.String("service_name", svcName),
 						zap.String("function_name", fn.ObjectMeta.Name))
-
 				}
 			}
 		},
@@ -200,5 +199,4 @@ func FunctionEventHandlers(logger *zap.Logger, kubernetesClient kubernetes.Inter
 			}
 		},
 	}
-
 }
