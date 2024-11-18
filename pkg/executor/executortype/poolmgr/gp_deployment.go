@@ -196,6 +196,12 @@ func (gp *GenericPool) genDeploymentSpec(env *fv1.Environment) (*appsv1.Deployme
 // A pool is a deployment of generic containers for an env.  This
 // creates the pool but doesn't wait for any pods to be ready.
 func (gp *GenericPool) createPoolDeployment(ctx context.Context, env *fv1.Environment) error {
+	gp.logger.Info("Debugging environment details",
+		zap.String("env.Name", env.Name),
+		zap.String("env.ObjectMeta.Name", env.ObjectMeta.Name),
+		zap.String("env.ObjectMeta.Namespace", env.ObjectMeta.Namespace),
+		zap.Any("env.Spec.Resources", env.Spec.Resources),
+	)
 	if strings.HasSuffix(env.ObjectMeta.Name, "-wasm") {
 		gp.logger.Info("Detected wasm environment; deploying environment during initial function trigger", zap.String("environment", env.Name))
 		return nil
