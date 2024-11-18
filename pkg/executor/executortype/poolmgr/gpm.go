@@ -479,6 +479,19 @@ func (gpm *GenericPoolManager) service() {
 				if req.env.ObjectMeta.Namespace != metav1.NamespaceDefault {
 					ns = req.env.ObjectMeta.Namespace
 				}
+				gpm.logger.Info("Handling GET_POOL request",
+					zap.String("Environment ObjectMeta.Name", req.env.ObjectMeta.Name),
+					zap.String("Environment Name", req.env.Name),
+				)
+				if strings.HasSuffix(req.env.ObjectMeta.Name, "-wasm") {
+					gpm.logger.Info("Detected WebAssembly environment; skipping pool creation",
+						zap.String("environment", req.env.ObjectMeta.Name),
+						zap.String("namespace", req.env.ObjectMeta.Namespace))
+					req.responseChannel <- &response{
+						error: fmt.Errorf("pool creation for WebAssembly environments is deferred until the first function trigger"),
+					}
+					continue // Skip this request
+				}
 				pool = MakeGenericPool(gpm.logger, gpm.fissionClient, gpm.kubernetesClient,
 					gpm.metricsClient, req.env, ns, gpm.namespace, gpm.fsCache,
 					gpm.fetcherConfig, gpm.instanceID, gpm.enableIstio, gpm.podSpecPatch)
@@ -754,6 +767,6 @@ func (gpm *GenericPoolManager) NoActiveConnectionEventChecker(kubeClient kuberne
 
 }
 
-func (gpm *GenericPoolManager) StorePodIP(ctx context.Context, funcUID string,PodIP string) error {
+func (gpm *GenericPoolManager) StorePodIP(ctx context.Context, funcUID string, PodIP string) error {
 	return nil
 }
