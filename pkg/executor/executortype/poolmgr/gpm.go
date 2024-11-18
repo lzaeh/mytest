@@ -478,9 +478,10 @@ func (gpm *GenericPoolManager) service() {
 				if req.env.ObjectMeta.Namespace != metav1.NamespaceDefault {
 					ns = req.env.ObjectMeta.Namespace
 				}
-				fmt.Println("Environment Name:", req.env.ObjectMeta.Name)
-				fmt.Println("Environment Namespace:", req.env.ObjectMeta.Namespace)
 
+				gpm.logger.Info("check pool",
+					zap.String("Environment Name:", req.env.ObjectMeta.Name),
+					zap.String("Environment Namespace:", req.env.ObjectMeta.Namespace))
 				if strings.HasSuffix(req.env.ObjectMeta.Name, "-wasm") {
 					gpm.logger.Info("Detected WebAssembly environment; skipping pool creation",
 						zap.String("environment", req.env.ObjectMeta.Name),
