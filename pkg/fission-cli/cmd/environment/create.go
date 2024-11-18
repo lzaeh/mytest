@@ -173,7 +173,7 @@ func BuildImageWithKaniko(envName string) (string, error) {
 	//xx-wasm 来自 函数的传参 envName
 	//上面的步骤做完，镜像就导入到本地了，然后就需要清理资源：
 	//pod 已经在上面的步骤保证删除了，然后把 hostpath 下的 Dockerfile 以及 image.tar 删除。
-	imageTarPath := filepath.Join(HostPath, "img.tar")
+	imageTarPath := filepath.Join(HostPath, "image.tar")
 	importCmd := exec.Command("ctr", "-a", "/run/containerd/containerd.sock", "-n", "k8s.io", "images", "import", imageTarPath)
 	importOutput, err := importCmd.CombinedOutput()
 	if err != nil {
