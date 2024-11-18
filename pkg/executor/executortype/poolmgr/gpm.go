@@ -465,6 +465,19 @@ func (gpm *GenericPoolManager) CleanupOldExecutorObjects(ctx context.Context) {
 func (gpm *GenericPoolManager) service() {
 	for {
 		req := <-gpm.requestChannel
+		fmt.Printf("Check environment before pool creation: Name=%s, Namespace=%s\n",
+			req.env.ObjectMeta.Name, req.env.ObjectMeta.Namespace)
+		// 检查是否为 WebAssembly 环境
+		if strings.HasSuffix(req.env.ObjectMeta.Name, "-wasm") {
+			// 打印日志，表明跳过了池的创建
+			fmt.Printf("Detected WebAssembly environment; skipping pool creation: Name=%s, Namespace=%s\n",
+				req.env.ObjectMeta.Name, req.env.ObjectMeta.Namespace)
+			// 返回一个错误到请求通道，表示跳过创建池
+			req.responseChannel <- &response{
+				error: fmt.Errorf("pool creation for WebAssembly environments is deferred until the first function trigger"),
+			}
+			continue // 跳过后续逻辑
+		}
 		switch req.requestType {
 		case GET_POOL:
 			// just because they are missing in the cache, we end up creating another duplicate pool.
