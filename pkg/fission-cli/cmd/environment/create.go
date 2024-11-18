@@ -73,8 +73,10 @@ func (opts *CreateSubCommand) complete(input cli.Input, isWasmEnv *bool) error {
 	envName := input.String(flagkey.EnvName)
 	imageUrl := envImageName
 	//如果以 .wasm 结尾，我们需要构建镜像并重新指定 imageUrl
-	if checkWasm(envImageName) {
+	if checkWasmEnv(envName) {
 		*isWasmEnv = true
+	}
+	if checkWasm(envImageName) {
 		err := createDockerfile(envImageName)
 		if err != nil {
 			return fmt.Errorf("error building dockerfile: %w", err)
@@ -87,7 +89,7 @@ func (opts *CreateSubCommand) complete(input cli.Input, isWasmEnv *bool) error {
 		fmt.Println(result)
 	}
 	// 由于 flagkey 中的属性是常量，我们通过新建变量来指定 envImage
-	env, err := createEnvironmentFromCmd(input, imageUrl)
+	env, err := createEnvironmentFromCmd(input, imageUrl, *isWasmEnv)
 	if err != nil {
 		return err
 	}
@@ -223,13 +225,7 @@ func (opts *CreateSubCommand) run(input cli.Input, isWasmEnv bool) error {
 		}
 		return nil
 	}
-	// 如果是 wasm 环境，先不要创建镜像，走原来版本的方法，将 env 资源先保留起来，初次访问时再部署。
-	if isWasmEnv {
-		fmt.Printf("Detected Wasm environment '%v'. Skipping immediate deployment.\n", opts.env.ObjectMeta.Name)
-		fmt.Println("Environment resource has been created but not deployed yet. It will be deployed on first access.")
-		return nil
-	}
-	// 其他环境正常按照 fission 原思想创建
+
 	_, err = opts.Client().V1().Environment().Create(opts.env)
 	if err != nil {
 		return errors.Wrap(err, "error creating environment")
@@ -240,7 +236,7 @@ func (opts *CreateSubCommand) run(input cli.Input, isWasmEnv bool) error {
 }
 
 // createEnvironmentFromCmd creates environment initialized with CLI input.
-func createEnvironmentFromCmd(input cli.Input, imageUrl string) (*fv1.Environment, error) {
+func createEnvironmentFromCmd(input cli.Input, imageUrl string, isWasmEnv bool) (*fv1.Environment, error) {
 	e := utils.MultiErrorWithFormat()
 	envName := input.String(flagkey.EnvName)
 	envImg := imageUrl
@@ -250,7 +246,6 @@ func createEnvironmentFromCmd(input cli.Input, imageUrl string) (*fv1.Environmen
 	keepArchive := input.Bool(flagkey.EnvKeeparchive)
 	envGracePeriod := input.Int64(flagkey.EnvGracePeriod)
 	pullSecret := input.String(flagkey.EnvImagePullSecret)
-
 	envVersion := input.Int(flagkey.EnvVersion)
 	// Environment API interface version is not specified and
 	// builder image is empty, set default interface version
@@ -266,8 +261,10 @@ func createEnvironmentFromCmd(input cli.Input, imageUrl string) (*fv1.Environmen
 	if !input.IsSet(flagkey.EnvPoolsize) {
 		console.Info("poolsize setting default to 3")
 	}
-
 	poolsize := input.Int(flagkey.EnvPoolsize)
+	if isWasmEnv {
+		poolsize = 0
+	}
 	if poolsize < 1 {
 		console.Warn("poolsize is not positive, if you are using pool manager please set positive value")
 	}
