@@ -141,6 +141,15 @@ func MakeGenericPool(
 }
 
 func (gp *GenericPool) setup(ctx context.Context) error {
+	//检测 如果是 wasm env 阻止池创建
+	if strings.HasSuffix(gp.env.ObjectMeta.Name, "-wasm") {
+		gp.logger.Info("Detected wasm environment; skipping pool creation",
+			zap.String("env.Name", gp.env.Name),
+			zap.String("env.ObjectMeta.Name", gp.env.ObjectMeta.Name),
+			zap.String("env.ObjectMeta.Namespace", gp.env.ObjectMeta.Namespace),
+			zap.Any("env.Spec.Resources", gp.env.Spec.Resources))
+		return nil
+	}
 	// create fetcher SA in this ns, if not already created
 	err := gp.fetcherConfig.SetupServiceAccount(gp.kubernetesClient, gp.namespace, nil)
 	if err != nil {
