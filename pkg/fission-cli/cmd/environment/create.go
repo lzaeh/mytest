@@ -57,21 +57,24 @@ func Create(input cli.Input) error {
 }
 
 func (opts *CreateSubCommand) do(input cli.Input) error {
-	err := opts.complete(input)
+	isWasmEnv := false
+	err := opts.complete(input, &isWasmEnv)
 	if err != nil {
 		return err
 	}
-	return opts.run(input)
+	return opts.run(input, isWasmEnv)
 }
 
 // complete creates a environment objects and populates it with default value and CLI inputs.
-// 在 complete 中，检测 --image 内容，如果是 .wasm 结尾的文件，我们可以通过 kaniko 构建出镜像，使后面构建 env 时使用新的镜像本地地址，如果不是，则默认使用这个镜像
-func (opts *CreateSubCommand) complete(input cli.Input) error {
+// 在 complete 中，检测 --image 内容，如果是 .wasm 结尾的文件，我们可以通过 kaniko 构建出镜像，使后面构建 env 时使用新的镜像本地地址。
+// 如果不是，则默认使用镜像地址。
+func (opts *CreateSubCommand) complete(input cli.Input, isWasmEnv *bool) error {
 	envImageName := input.String(flagkey.EnvImage)
 	envName := input.String(flagkey.EnvName)
 	imageUrl := envImageName
 	//如果以 .wasm 结尾，我们需要构建镜像并重新指定 imageUrl
 	if checkWasm(envImageName) {
+		*isWasmEnv = true
 		err := createDockerfile(envImageName)
 		if err != nil {
 			return fmt.Errorf("error building dockerfile: %w", err)
@@ -164,14 +167,12 @@ func BuildImageWithKaniko(envName string) (string, error) {
 		time.Sleep(1 * time.Second) // Poll every 1 seconds
 	}
 
-	//此时如果成功打包，在 hostpath 下会有 img.tar 文件
+	//此时如果成功打包，在 hostpath 下会有 image.tar 文件
 	//需要使用 命令 ctr -a /run/containerd/containerd.sock -n k8s.io images import /hostpath/image.tar
 	//然后使用命令 ctr -a /run/containerd/containerd.sock -n k8s.io images tag docker.io/library/image:latest k8s.io/xx-wasm:latest
 	//xx-wasm 来自 函数的传参 envName
 	//上面的步骤做完，镜像就导入到本地了，然后就需要清理资源：
-	//pod已经在上面的步骤保证删除了
-	//把 hostpath 下的所有文件删除
-	// Import the image tar file into containerd
+	//pod 已经在上面的步骤保证删除了，然后把 hostpath 下的 Dockerfile 以及 image.tar 删除。
 	imageTarPath := filepath.Join(HostPath, "img.tar")
 	importCmd := exec.Command("ctr", "-a", "/run/containerd/containerd.sock", "-n", "k8s.io", "images", "import", imageTarPath)
 	importOutput, err := importCmd.CombinedOutput()
@@ -179,8 +180,6 @@ func BuildImageWithKaniko(envName string) (string, error) {
 		return "", fmt.Errorf("failed to import image.tar: %v, output: %s", err, string(importOutput))
 	}
 	fmt.Printf("Imported image from %s\n", imageTarPath)
-
-	// Tag the imported image with `envName` as `k8s.io/envName:latest`
 	tagName := fmt.Sprintf("k8s.io/%s:latest", envName)
 	tagCmd := exec.Command("ctr", "-a", "/run/containerd/containerd.sock", "-n", "k8s.io", "images", "tag", "docker.io/library/image:latest", tagName)
 	tagOutput, err := tagCmd.CombinedOutput()
@@ -188,9 +187,7 @@ func BuildImageWithKaniko(envName string) (string, error) {
 		return "", fmt.Errorf("failed to tag image as %s: %v, output: %s", tagName, err, string(tagOutput))
 	}
 	fmt.Printf("Tagged image as %s\n", tagName)
-
-	// Clean up hostpath files
-	cleanupCmd := exec.Command("rm", "-rf", HostPath+"/*")
+	cleanupCmd := exec.Command("rm", "-rf", HostPath+"/Dockerfile", HostPath+"/image.tar")
 	if err := cleanupCmd.Run(); err != nil {
 		return "", fmt.Errorf("failed to clean up hostpath: %v", err)
 	}
@@ -200,7 +197,7 @@ func BuildImageWithKaniko(envName string) (string, error) {
 
 // run write the resource to a spec file or create a fission CRD with remote fission server.
 // It also prints warning/error if necessary.
-func (opts *CreateSubCommand) run(input cli.Input) error {
+func (opts *CreateSubCommand) run(input cli.Input, isWasmEnv bool) error {
 	m := opts.env.ObjectMeta
 
 	envList, err := opts.Client().V1().Environment().List(m.Namespace)
@@ -226,7 +223,13 @@ func (opts *CreateSubCommand) run(input cli.Input) error {
 		}
 		return nil
 	}
-
+	// 如果是 wasm 环境，先不要创建镜像，走原来版本的方法，将 env 资源先保留起来，初次访问时再部署。
+	if isWasmEnv {
+		fmt.Printf("Detected Wasm environment '%v'. Skipping immediate deployment.\n", opts.env.ObjectMeta.Name)
+		fmt.Println("Environment resource has been created but not deployed yet. It will be deployed on first access.")
+		return nil
+	}
+	// 其他环境正常按照 fission 原思想创建
 	_, err = opts.Client().V1().Environment().Create(opts.env)
 	if err != nil {
 		return errors.Wrap(err, "error creating environment")
