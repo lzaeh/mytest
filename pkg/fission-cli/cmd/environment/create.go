@@ -163,7 +163,7 @@ func BuildImageWithKaniko(envName string) (string, error) {
 			}
 			break
 		} else if pod.Status.Phase == corev1.PodFailed {
-			return "", fmt.Errorf("Pod %s failed, use [kubectl logs kaniko] to find problems. Please remove pod named [kaniko] by yourself !!!", podName)
+			return "", fmt.Errorf("Pod %s failed, use [kubectl logs kaniko] to find problems. Please remove pod named [kaniko] by [kubectl delete pod kaniko]", podName)
 		}
 		fmt.Printf("Waiting for Pod %s to complete...\n", podName)
 		time.Sleep(1 * time.Second) // Poll every 1 seconds

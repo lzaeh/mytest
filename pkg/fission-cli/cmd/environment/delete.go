@@ -43,11 +43,9 @@ func (opts *DeleteSubCommand) do(input cli.Input) error {
 		Name:      input.String(flagkey.EnvName),
 		Namespace: input.String(flagkey.NamespaceEnvironment),
 	}
-	deleteCmd := exec.Command("criclt", "rmi", "k8s.io/", m.Name)
-	deleteOutput, delete_err := deleteCmd.CombinedOutput()
-	if delete_err != nil {
-		return errors.Wrap(delete_err, fmt.Sprintf("error deleting images %s", deleteOutput))
-	}
+	deleteCmd := exec.Command("crictl", "rmi", "k8s.io/", m.Name)
+	_, _ = deleteCmd.CombinedOutput()
+
 	if !input.Bool(flagkey.EnvForce) {
 		fns, err := opts.Client().V1().Function().List(metav1.NamespaceAll)
 		if err != nil {
