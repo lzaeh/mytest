@@ -43,8 +43,6 @@ func (opts *DeleteSubCommand) do(input cli.Input) error {
 		Name:      input.String(flagkey.EnvName),
 		Namespace: input.String(flagkey.NamespaceEnvironment),
 	}
-	fmt.Printf(m.Name)
-	fmt.Printf(m.Namespace)
 	deleteCmd := exec.Command("crictl", "rmi", "k8s.io/"+m.Name)
 	_, _ = deleteCmd.CombinedOutput()
 
