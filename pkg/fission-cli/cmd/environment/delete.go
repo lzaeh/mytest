@@ -45,7 +45,7 @@ func (opts *DeleteSubCommand) do(input cli.Input) error {
 	}
 	fmt.Printf(m.Name)
 	fmt.Printf(m.Namespace)
-	deleteCmd := exec.Command("crictl", "rmi", "k8s.io/", m.Name)
+	deleteCmd := exec.Command("crictl", "rmi", "k8s.io/"+m.Name)
 	_, _ = deleteCmd.CombinedOutput()
 
 	if !input.Bool(flagkey.EnvForce) {
