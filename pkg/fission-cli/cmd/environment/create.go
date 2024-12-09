@@ -29,6 +29,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sigs.k8s.io/yaml"
 	"strings"
 	"time"
 
@@ -66,18 +67,16 @@ func (opts *CreateSubCommand) do(input cli.Input) error {
 }
 
 func getK8sClient() *kubernetes.Clientset {
-	// kubeconfig 文件路径
-	kubeconfig := os.Getenv("KUBECONFIG")
-	// 加载配置
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	config, err := clientcmd.BuildConfigFromFlags("", clientcmd.RecommendedHomeFile)
 	if err != nil {
-		log.Fatalf("Failed to load kubeconfig: %v", err)
+		log.Fatalf("failed to create kubeconfig: %v", err)
 	}
-	// 创建 Kubernetes 客户端
+	fmt.Println("Kubeconfig loaded successfully.")
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		log.Fatalf("Failed to create Kubernetes client: %v", err)
+		log.Fatalf("failed to create Kubernetes client: %v", err)
 	}
+	fmt.Println("Kubernetes client created.")
 	return clientset
 }
 
@@ -123,13 +122,24 @@ func createWasmBuilderPod(clientset *kubernetes.Clientset, namespace, wasmBuilde
 		},
 	}
 
-	// 创建 Pod
-	_, err := clientset.CoreV1().Pods(namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+	yamlData, err := yaml.Marshal(pod)
 	if err != nil {
-		return "", fmt.Errorf("failed to create Pod: %w", err)
+		return "", fmt.Errorf("failed to marshal Pod to YAML: %w", err)
 	}
 
-	fmt.Printf("Pod %s created successfully\n", podName)
+	fileName := "wasm-builder-pod.yaml"
+	filePath := fmt.Sprintf("%s/%s", HostPath, fileName)
+	err = os.WriteFile(filePath, yamlData, 0644)
+	if err != nil {
+		return "", fmt.Errorf("failed to write Pod YAML to file: %w", err)
+	}
+
+	cmd := exec.Command("kubectl", "apply", "-f", filePath)
+	defer os.Remove(filePath)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to apply wasm-builder pod.yaml: %v, output: %s", err, string(output))
+	}
 
 	// 轮询检查 Pod 状态
 	timeout := time.After(15 * time.Minute) // 设置超时时间
@@ -159,6 +169,7 @@ func createWasmBuilderPod(clientset *kubernetes.Clientset, namespace, wasmBuilde
 			time.Sleep(1 * time.Second) // 每秒轮询一次
 		}
 	}
+
 }
 
 // complete creates a environment objects and populates it with default value and CLI inputs.
@@ -254,17 +265,8 @@ func BuildImageWithKaniko(envName string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to apply pod.yaml: %v, output: %s", err, string(output))
 	}
-	fmt.Printf("Applied pod.yaml: %s\n", output)
-	config, err := clientcmd.BuildConfigFromFlags("", clientcmd.RecommendedHomeFile)
-	if err != nil {
-		log.Fatalf("failed to create kubeconfig: %v", err)
-	}
-	fmt.Println("Kubeconfig loaded successfully.")
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Fatalf("failed to create Kubernetes client: %v", err)
-	}
-	fmt.Println("Kubernetes client created.")
+	fmt.Printf("Applied kaniko pod.yaml: %s\n", output)
+	clientset := getK8sClient()
 	podName := "kaniko"
 	for {
 		// Get Pod status
