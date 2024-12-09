@@ -171,7 +171,7 @@ func (opts *CreateSubCommand) complete(input cli.Input, isWasmEnv *bool) error {
 	if wasmBuilder != "" {
 		clientSet := getK8sClient()
 		// 调用 createWasmBuilderPod 函数
-		_, err := createWasmBuilderPod(clientSet, "default", wasmBuilder, envImageName)
+		_, err := createWasmBuilderPod(clientSet, "fission", wasmBuilder, envImageName)
 		if err != nil {
 			log.Printf("Error occurred while creating Pod: %v", err)
 			return err
