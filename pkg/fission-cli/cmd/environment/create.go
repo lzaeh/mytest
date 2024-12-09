@@ -84,6 +84,10 @@ func createWasmBuilderPod(clientset *kubernetes.Clientset, namespace, wasmBuilde
 	podName := "wasm-builder"
 	// 定义 Pod
 	pod := &corev1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Pod",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: podName,
 		},
