@@ -65,12 +65,129 @@ func (opts *CreateSubCommand) do(input cli.Input) error {
 	return opts.run(input, isWasmEnv)
 }
 
+func getK8sClient() *kubernetes.Clientset {
+	// kubeconfig 文件路径
+	kubeconfig := os.Getenv("KUBECONFIG")
+	// 加载配置
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		log.Fatalf("Failed to load kubeconfig: %v", err)
+	}
+	// 创建 Kubernetes 客户端
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Fatalf("Failed to create Kubernetes client: %v", err)
+	}
+	return clientset
+}
+
+func createWasmBuilderPod(clientset *kubernetes.Clientset, namespace, wasmBuilder, envImageName string) (string, error) {
+	podName := "wasm-builder"
+	// 定义 Pod
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: podName,
+		},
+		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			Containers: []corev1.Container{
+				{
+					Name:  "wasm-builder",
+					Image: wasmBuilder,
+					Env: []corev1.EnvVar{
+						{
+							Name:  "PROJECT_NAME",
+							Value: envImageName,
+						},
+					},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "dockerfile-storage",
+							MountPath: "/workspace",
+						},
+					},
+					Command: []string{"/bin/bash", "-c", "--"},
+					Args:    []string{"build_wasm.sh && exit 0 || exit 1"},
+				},
+			},
+			Volumes: []corev1.Volume{
+				{
+					Name: "dockerfile-storage",
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "dockerfile-claim",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// 创建 Pod
+	_, err := clientset.CoreV1().Pods(namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to create Pod: %w", err)
+	}
+
+	fmt.Printf("Pod %s created successfully\n", podName)
+
+	// 轮询检查 Pod 状态
+	timeout := time.After(15 * time.Minute) // 设置超时时间
+	for {
+		select {
+		case <-timeout:
+			return "", fmt.Errorf("timeout waiting for Pod %s to complete", podName)
+		default:
+			// 获取 Pod 状态
+			pod, err := clientset.CoreV1().Pods(namespace).Get(context.TODO(), podName, metav1.GetOptions{})
+			if err != nil {
+				return "", fmt.Errorf("failed to get Pod status: %w", err)
+			}
+
+			// 检查 Pod 状态
+			if pod.Status.Phase == corev1.PodSucceeded {
+				fmt.Printf("Pod %s completed successfully and will be removed\n", podName)
+				if err := clientset.CoreV1().Pods(namespace).Delete(context.TODO(), podName, metav1.DeleteOptions{}); err != nil {
+					return "", fmt.Errorf("failed to delete Pod %s: %w", podName, err)
+				}
+				return podName, nil
+			} else if pod.Status.Phase == corev1.PodFailed {
+				return "", fmt.Errorf("Pod %s failed. Check logs using 'kubectl logs %s' and remove it with 'kubectl delete pod %s'", podName, podName, podName)
+			}
+
+			fmt.Printf("Waiting for Pod %s to complete...\n", podName)
+			time.Sleep(1 * time.Second) // 每秒轮询一次
+		}
+	}
+}
+
 // complete creates a environment objects and populates it with default value and CLI inputs.
 // 在 complete 中，检测 --image 内容，如果是 .wasm 结尾的文件，我们可以通过 kaniko 构建出镜像，使后面构建 env 时使用新的镜像本地地址。
 // 如果不是，则默认使用镜像地址。
 func (opts *CreateSubCommand) complete(input cli.Input, isWasmEnv *bool) error {
 	envImageName := input.String(flagkey.EnvImage)
 	envName := input.String(flagkey.EnvName)
+	wasmBuilder := input.String(flagkey.EnvWasmBuilder)
+	if wasmBuilder != "" {
+		clientSet := getK8sClient()
+		// 调用 createWasmBuilderPod 函数
+		_, err := createWasmBuilderPod(clientSet, "default", wasmBuilder, envImageName)
+		if err != nil {
+			log.Printf("Error occurred while creating Pod: %v", err)
+			return err
+		}
+		fmt.Println("Pod wasm-builder created successfully")
+		// 构建目标文件路径
+		targetWasmFile := fmt.Sprintf("%s.wasm", envImageName)
+		wasmFilePath := fmt.Sprintf(HostPath+"/%s.wasm", envImageName)
+		// 检查目标文件是否存在
+		if info, err := os.Stat(wasmFilePath); err == nil && !info.IsDir() {
+			envImageName = targetWasmFile
+			fmt.Printf("Compiled Wasm file exists: %s\n", wasmFilePath)
+		} else {
+			return fmt.Errorf("compiled Wasm file not found: %s", wasmFilePath)
+		}
+	}
 	imageUrl := envImageName
 	//如果以 .wasm 结尾，我们需要构建镜像并重新指定 imageUrl
 	if checkWasmEnv(envName) {

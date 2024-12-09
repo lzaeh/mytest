@@ -118,7 +118,7 @@ const (
 	MqtMetadata        = "metadata"
 	MqtSecret          = "secret"
 	MqtKind            = "mqtkind"
-
+	EnvWasmBuilder     = "wasm-builder"
 	EnvName            = resourceName
 	EnvPoolsize        = "poolsize"
 	EnvImage           = "image"
